@@ -75,8 +75,14 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  html, body {
+    height: 100%;
+    overscroll-behavior: none;
+  }
 }
 
+/* Credit score styling */
 .credit-score-gauge {
   position: relative;
   height: 200px;
@@ -93,14 +99,19 @@
   font-weight: bold;
 }
 
+/* Transaction styling */
 .transaction-item {
   transition: all 0.2s ease;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
 }
 
 .transaction-item:hover {
   transform: translateY(-2px);
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
+/* QR Scanner styling */
 .qr-scanner-container {
   position: relative;
   height: 300px;
@@ -109,6 +120,7 @@
   margin: 0 auto;
   overflow: hidden;
   border-radius: var(--radius);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
 .qr-scanner-overlay {
@@ -128,4 +140,31 @@
   height: 70%;
   border: 2px solid white;
   border-radius: 10px;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+/* Mobile app feel */
+@media (max-width: 768px) {
+  :root {
+    --radius: 1rem;
+  }
+  
+  .app-container {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
 }
