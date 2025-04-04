@@ -1,20 +1,41 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { PaymentRequest } from "@/types";
 import { toast } from "sonner";
+import { Transaction } from "@/types";
 import PaymentModal from "@/components/PaymentModal";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
+interface Contact {
+  name: string;
+  amount: number;
+}
+
 const SendMoneyPage = () => {
   const navigate = useNavigate();
-  const [selectedContact, setSelectedContact] = useState<{ name: string; amount: number } | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
-  const handleSelectContact = (contact: { name: string; amount: number }) => {
+  useEffect(() => {
+    // Simulated fetch – replace this with actual API call or user context
+    const fetchContacts = async () => {
+      // Example static user data; replace with actual user data
+      const userContacts: Contact[] = [
+        { name: "Ananya", amount: 150 },
+        { name: "Vikram", amount: 450 },
+        { name: "Kiran", amount: 300 },
+        { name: "Meena", amount: 900 },
+      ];
+      setContacts(userContacts);
+    };
+
+    fetchContacts();
+  }, []);
+
+  const handleSelectContact = (contact: Contact) => {
     setSelectedContact(contact);
     setIsPaymentModalOpen(true);
   };
@@ -34,22 +55,17 @@ const SendMoneyPage = () => {
           <h1 className="text-xl font-bold ml-2">Send Money</h1>
         </div>
       </header>
-      
+
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">Select a Contact</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            {[
-              { name: "Ajay", amount: 500 },
-              { name: "Priya", amount: 1000 },
-              { name: "Rahul", amount: 200 },
-              { name: "Neha", amount: 750 }
-            ].map((contact) => (
-              <Button 
+            {contacts.map((contact) => (
+              <Button
                 key={contact.name}
-                variant="outline" 
+                variant="outline"
                 className="h-auto py-4 flex flex-col items-center justify-center gap-2"
                 onClick={() => handleSelectContact(contact)}
               >
@@ -77,7 +93,7 @@ const SendMoneyPage = () => {
               paymentDetails={{
                 amount: selectedContact.amount,
                 to: selectedContact.name,
-                description: `Money transfer to ${selectedContact.name}`
+                description: `Money transfer to ${selectedContact.name}`,
               }}
               onClose={handleClosePaymentModal}
             />

@@ -98,7 +98,7 @@ const CreditScore = () => {
             </div>
             <div className="border rounded-lg p-4">
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Credit Utilization</h3>
-              <p className="text-lg font-bold">{creditScore.creditUtilization}%</p>
+              <p>{creditScore.creditUtilization.toFixed(1)}%</p>
               <Progress 
                 value={creditScore.creditUtilization} 
                 className="h-2 mt-2" 

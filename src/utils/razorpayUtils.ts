@@ -5,8 +5,8 @@ import { v4 as uuidv4 } from "uuid";
 import { updateCreditScoreWithTransaction } from "./creditScoreUtils";
 
 // Razorpay API keys (Test keys provided by the user)
-const RAZORPAY_KEY_ID = "rzp_test_S5BWwk1EVTJfWr";
-const RAZORPAY_KEY_SECRET = "lSGyItH8WD3VOMIsiu1VdLAL";
+const RAZORPAY_KEY_ID = "rzp_test_eDVMj23yL98Hvt";
+const RAZORPAY_KEY_SECRET = "LOr3SG3XRnMpgduiMYqljwgH";
 
 // Get or initialize transactions from localStorage
 export const getTransactions = (): Transaction[] => {
@@ -26,6 +26,8 @@ export const getTransactions = (): Transaction[] => {
 export const saveTransactions = (transactions: Transaction[]): void => {
   localStorage.setItem("transactions", JSON.stringify(transactions));
 };
+
+
 
 // Add a new transaction and update credit score
 export const addTransaction = (transaction: Transaction): void => {
@@ -49,36 +51,50 @@ export const addTransaction = (transaction: Transaction): void => {
 
 // Create a mock order ID (in a real app, this would come from your backend)
 export const createOrderId = async (amount: number): Promise<string> => {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  return `order_${Date.now()}`;
+  const response = await fetch("http://localhost:5000/create-order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
+
+  if (!response.ok) throw new Error("Failed to create order");
+
+  const data = await response.json();
+  return data.id; // Razorpay order_id
 };
+
 
 // Process payment using Razorpay
 export const processPayment = async (paymentRequest: PaymentRequest): Promise<boolean> => {
   try {
-    // Check if Razorpay is loaded
     if (!(window as any).Razorpay) {
       throw new Error("Razorpay SDK not loaded");
     }
-    
-    // Convert amount to paisa (Razorpay requires amount in lowest denomination)
+
     const amountInPaisa = Math.round(paymentRequest.amount * 100);
-    
-    // Create order ID (in a real app, this would be created on your backend)
-    const orderId = await createOrderId(amountInPaisa);
-    
-    // Return promise that resolves when payment is complete
+
+    // Call your backend to create Razorpay order
+    const response = await fetch("http://localhost:5000/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: paymentRequest.amount }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to create order");
+    }
+
+    const { id: orderId, amount } = await response.json();
+
     return new Promise((resolve, reject) => {
       const options: RazorpayOptions = {
         key: RAZORPAY_KEY_ID,
-        amount: amountInPaisa,
+        amount: amount, // Already in paisa from backend
         currency: "INR",
         name: "Pay Swift",
         description: paymentRequest.description,
         order_id: orderId,
-        handler: function(response: any) {
-          // Create transaction record
+        handler: function (res: any) {
           const transaction: Transaction = {
             id: uuidv4(),
             type: "debit",
@@ -88,14 +104,13 @@ export const processPayment = async (paymentRequest: PaymentRequest): Promise<bo
             date: new Date(),
             status: "completed",
           };
-          
-          // Add transaction to history and update credit score
+
           addTransaction(transaction);
-          
-          // Update user balance (in a real app, this would be done on the backend)
+
           const currentBalance = parseFloat(localStorage.getItem("userBalance") || "5000");
-          localStorage.setItem("userBalance", (currentBalance - paymentRequest.amount).toString());
-          
+          localStorage.setItem("userBalance", (currentBalance - paymentRequest.amount).toFixed(2));
+
+          toast.success("Payment successful");
           resolve(true);
         },
         prefill: {
@@ -107,12 +122,11 @@ export const processPayment = async (paymentRequest: PaymentRequest): Promise<bo
           color: "#4285F4",
         },
       };
-      
-      const razorpayInstance = new (window as any).Razorpay(options);
-      razorpayInstance.open();
-      
-      razorpayInstance.on("payment.failed", function(response: any) {
-        // Create failed transaction record
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+
+      rzp.on("payment.failed", function (res: any) {
         const transaction: Transaction = {
           id: uuidv4(),
           type: "debit",
@@ -122,21 +136,20 @@ export const processPayment = async (paymentRequest: PaymentRequest): Promise<bo
           date: new Date(),
           status: "failed",
         };
-        
-        // Add failed transaction to history
+
         addTransaction(transaction);
-        
+
         toast.error("Payment failed", {
-          description: response.error.description || "Please try again later",
+          description: res.error?.description || "Please try again later",
         });
-        
+
         reject(new Error("Payment failed"));
       });
     });
-  } catch (error) {
-    console.error("Payment processing error:", error);
-    toast.error("Payment processing error", {
-      description: "Please try again later",
+  } catch (err) {
+    console.error("Payment processing error:", err);
+    toast.error("Payment error", {
+      description: err instanceof Error ? err.message : "Something went wrong",
     });
     return false;
   }

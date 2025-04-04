@@ -56,7 +56,7 @@ const Dashboard = () => {
     <div className="max-w-md mx-auto px-4 py-6 min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <header className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-primary">PaySwift</h1>
+          <h1 className="text-2xl font-bold text-primary">TransPay</h1>
           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="text-primary font-semibold">JS</span>
           </div>
