@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,26 +6,26 @@ import { PaymentRequest } from "@/types";
 
 interface QRScannerProps {
   onClose: () => void;
+  onScan: (data: string) => void; // ✅ Added this
 }
 
-const QRScanner = ({ onClose }: QRScannerProps) => {
+const QRScanner = ({ onClose, onScan }: QRScannerProps) => {
   const [scanning, setScanning] = useState(true);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState<PaymentRequest | null>(null);
 
-  // Simulate QR code scanning
   const simulateScan = () => {
     setScanning(false);
-    
-    // Mock payment details that would normally come from QR code
-    const mockPaymentDetails: PaymentRequest = {
+
+    // Mock QR JSON string (simulate a real QR payload)
+    const mockQRData = JSON.stringify({
       amount: 150,
       to: "Coffee Shop",
       description: "Payment for Coffee",
-    };
-    
-    setPaymentDetails(mockPaymentDetails);
-    setShowPayment(true);
+    });
+
+    // ✅ Call the onScan callback with mock data
+    onScan(mockQRData);
   };
 
   const handleClosePayment = () => {
@@ -54,41 +53,31 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
                 </div>
               </div>
             </div>
-            
+
             <div className="text-center space-y-2">
               <h3 className="font-semibold text-lg">
                 {scanning ? "Scanning QR Code..." : "QR Code Detected!"}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {scanning 
-                  ? "Position QR code within the frame" 
+                {scanning
+                  ? "Position QR code within the frame"
                   : "Processing payment details..."}
               </p>
             </div>
-            
+
             <div className="flex gap-2 pt-2">
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={onClose}
-              >
+              <Button variant="outline" className="flex-1" onClick={onClose}>
                 Cancel
               </Button>
-              
-              <Button 
-                className="flex-1"
-                onClick={simulateScan}
-              >
+
+              <Button className="flex-1" onClick={simulateScan}>
                 {scanning ? "Simulate Scan" : "Continue"}
               </Button>
             </div>
           </div>
         ) : (
           paymentDetails && (
-            <PaymentModal 
-              paymentDetails={paymentDetails}
-              onClose={handleClosePayment}
-            />
+            <PaymentModal paymentDetails={paymentDetails} onClose={handleClosePayment} />
           )
         )}
       </CardContent>

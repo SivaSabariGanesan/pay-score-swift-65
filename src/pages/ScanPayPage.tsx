@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import QRScanner from "@/components/QRScanner";
@@ -15,26 +14,24 @@ const ScanPayPage = () => {
 
   const handleQRScanned = (data: string) => {
     try {
-      // Assuming the QR code contains JSON data with payment details
       const paymentData = JSON.parse(data);
-      
-      // Create a payment request from the scanned data
+
       const paymentRequest: PaymentRequest = {
-        amount: paymentData.amount || 100, // Default amount if not in QR
-        to: paymentData.to || "Merchant", // Default recipient if not in QR
+        amount: paymentData.amount || 100,
+        to: paymentData.to || "Merchant",
         description: paymentData.description || "QR Code Payment",
       };
-      
+
       setScannedPayment(paymentRequest);
       setIsPaymentModalOpen(true);
     } catch (error) {
-      // For demo purposes, show payment modal with dummy data if QR is invalid
+      // fallback dummy data if QR code is not valid JSON
       const dummyPayment: PaymentRequest = {
         amount: 250,
         to: "Coffee Shop",
         description: "Payment for goods/services",
       };
-      
+
       setScannedPayment(dummyPayment);
       setIsPaymentModalOpen(true);
     }
@@ -55,13 +52,8 @@ const ScanPayPage = () => {
           <h1 className="text-xl font-bold ml-2">Scan & Pay</h1>
         </div>
       </header>
-      
-      <QRScanner 
-        onClose={() => navigate("/")} 
-        onScan={handleQRScanned}
-      />
 
-      {/* Payment Modal */}
+      <QRScanner onClose={() => navigate("/")} onScan={handleQRScanned} />
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
         <DialogContent className="sm:max-w-md">
           {scannedPayment && (
