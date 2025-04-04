@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { QRCodeIcon, CreditCard } from "lucide-react";
+import { QrCode, CreditCard } from "lucide-react";
 import CreditScore from "./CreditScore";
 import TransactionHistory from "./TransactionHistory";
 import QRScanner from "./QRScanner";
@@ -87,7 +87,7 @@ const Dashboard = () => {
               className="h-24 flex flex-col items-center justify-center space-y-2"
               onClick={toggleScanner}
             >
-              <QRCodeIcon className="h-8 w-8" />
+              <QrCode className="h-8 w-8" />
               <span>{showScanner ? "Hide Scanner" : "Scan & Pay"}</span>
             </Button>
             <Button
