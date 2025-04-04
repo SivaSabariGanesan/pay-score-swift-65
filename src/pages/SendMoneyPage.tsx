@@ -1,35 +1,27 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { processPayment } from "@/utils/razorpayUtils";
 import { PaymentRequest } from "@/types";
 import { toast } from "sonner";
+import PaymentModal from "@/components/PaymentModal";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const SendMoneyPage = () => {
   const navigate = useNavigate();
+  const [selectedContact, setSelectedContact] = useState<{ name: string; amount: number } | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
-  const handleSendMoney = async (recipient: string, amount: number) => {
-    const paymentRequest: PaymentRequest = {
-      amount: amount,
-      to: recipient,
-      description: `Money transfer to ${recipient}`,
-    };
+  const handleSelectContact = (contact: { name: string; amount: number }) => {
+    setSelectedContact(contact);
+    setIsPaymentModalOpen(true);
+  };
 
-    try {
-      const result = await processPayment(paymentRequest);
-      if (result) {
-        toast.success(`Money sent successfully`, {
-          description: `₹${amount} sent to ${recipient}.`
-        });
-        navigate("/");
-      }
-    } catch (error) {
-      toast.error("Transfer failed", {
-        description: "Please try again later"
-      });
-    }
+  const handleClosePaymentModal = () => {
+    setIsPaymentModalOpen(false);
+    setSelectedContact(null);
   };
 
   return (
@@ -59,7 +51,7 @@ const SendMoneyPage = () => {
                 key={contact.name}
                 variant="outline" 
                 className="h-auto py-4 flex flex-col items-center justify-center gap-2"
-                onClick={() => handleSendMoney(contact.name, contact.amount)}
+                onClick={() => handleSelectContact(contact)}
               >
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                   <span className="text-primary font-medium text-sm">
@@ -76,6 +68,22 @@ const SendMoneyPage = () => {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Payment Modal */}
+      <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          {selectedContact && (
+            <PaymentModal
+              paymentDetails={{
+                amount: selectedContact.amount,
+                to: selectedContact.name,
+                description: `Money transfer to ${selectedContact.name}`
+              }}
+              onClose={handleClosePaymentModal}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

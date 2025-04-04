@@ -4,8 +4,9 @@ import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { updateCreditScoreWithTransaction } from "./creditScoreUtils";
 
-// Test Razorpay API key (Replace with actual test key from Razorpay dashboard)
-const TEST_RAZORPAY_KEY = "rzp_test_yourTestKeyHere";
+// Razorpay API keys (Test keys provided by the user)
+const RAZORPAY_KEY_ID = "rzp_test_S5BWwk1EVTJfWr";
+const RAZORPAY_KEY_SECRET = "lSGyItH8WD3VOMIsiu1VdLAL";
 
 // Get or initialize transactions from localStorage
 export const getTransactions = (): Transaction[] => {
@@ -70,7 +71,7 @@ export const processPayment = async (paymentRequest: PaymentRequest): Promise<bo
     // Return promise that resolves when payment is complete
     return new Promise((resolve, reject) => {
       const options: RazorpayOptions = {
-        key: TEST_RAZORPAY_KEY,
+        key: RAZORPAY_KEY_ID,
         amount: amountInPaisa,
         currency: "INR",
         name: "Pay Swift",

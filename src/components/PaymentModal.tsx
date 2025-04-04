@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PaymentRequest } from "@/types";
 import { processPayment } from "@/utils/razorpayUtils";
+import { processMetaMaskPayment } from "@/utils/metamaskUtils";
 import { toast } from "sonner";
 
 interface PaymentModalProps {
@@ -12,6 +13,7 @@ interface PaymentModalProps {
 
 const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<"razorpay" | "metamask" | null>(null);
   
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -24,11 +26,23 @@ const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
   };
   
   const handlePayment = async () => {
+    if (!selectedMethod) {
+      toast.error("Please select a payment method");
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
-      // Process the payment using Razorpay
-      const success = await processPayment(paymentDetails);
+      let success = false;
+
+      if (selectedMethod === "razorpay") {
+        // Process the payment using Razorpay
+        success = await processPayment(paymentDetails);
+      } else if (selectedMethod === "metamask") {
+        // Process payment using MetaMask
+        success = await processMetaMaskPayment(paymentDetails);
+      }
       
       if (success) {
         toast.success("Payment successful", {
@@ -72,10 +86,36 @@ const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
             <span className="text-muted-foreground">For</span>
             <span>{paymentDetails.description}</span>
           </div>
-          
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Payment method</span>
-            <span>Razorpay</span>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Select Payment Method</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Button 
+              variant={selectedMethod === "razorpay" ? "default" : "outline"}
+              className="flex flex-col h-auto py-3 relative"
+              onClick={() => setSelectedMethod("razorpay")}
+            >
+              <img 
+                src="https://razorpay.com/favicon.png" 
+                alt="Razorpay" 
+                className="h-6 w-6 mb-1" 
+              />
+              <span className="text-xs">Razorpay</span>
+            </Button>
+            
+            <Button 
+              variant={selectedMethod === "metamask" ? "default" : "outline"}
+              className="flex flex-col h-auto py-3 relative"
+              onClick={() => setSelectedMethod("metamask")}
+            >
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" 
+                alt="MetaMask" 
+                className="h-6 w-6 mb-1" 
+              />
+              <span className="text-xs">MetaMask</span>
+            </Button>
           </div>
         </div>
       </div>
@@ -97,7 +137,7 @@ const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
         <Button 
           className="flex-1"
           onClick={handlePayment}
-          disabled={isProcessing}
+          disabled={isProcessing || !selectedMethod}
         >
           {isProcessing ? "Processing..." : "Pay Now"}
         </Button>

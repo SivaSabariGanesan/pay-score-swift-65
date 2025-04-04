@@ -8,6 +8,7 @@ export interface Transaction {
   from?: string;
   date: Date;
   status: 'completed' | 'pending' | 'failed';
+  txHash?: string; // For blockchain transactions
 }
 
 export interface CreditScoreData {
@@ -58,4 +59,17 @@ export interface RazorpayOptions {
   theme: {
     color: string;
   };
+}
+
+// MetaMask specific types
+declare global {
+  interface Window {
+    ethereum?: {
+      isMetaMask?: boolean;
+      request: (args: {
+        method: string;
+        params?: unknown[] | object;
+      }) => Promise<unknown>;
+    };
+  }
 }
