@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import QRScanner from "@/components/QRScanner";
 import { useNavigate } from "react-router-dom";
@@ -7,10 +7,26 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import PaymentModal from "@/components/PaymentModal";
 import { PaymentRequest } from "@/types";
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 const ScanPayPage = () => {
   const navigate = useNavigate();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [scannedPayment, setScannedPayment] = useState<PaymentRequest | null>(null);
+
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   const handleQRScanned = (data: string) => {
     try {
@@ -23,17 +39,30 @@ const ScanPayPage = () => {
       };
 
       setScannedPayment(paymentRequest);
-      setIsPaymentModalOpen(true);
-    } catch (error) {
-      // fallback dummy data if QR code is not valid JSON
-      const dummyPayment: PaymentRequest = {
-        amount: 250,
-        to: "Coffee Shop",
-        description: "Payment for goods/services",
+
+      const options = {
+        key: "rzp_test_eDVMj23yL98Hvt", // Replace with your Razorpay Key
+        amount: paymentRequest.amount * 100, // amount in paise
+        currency: "INR",
+        name: paymentRequest.to,
+        description: paymentRequest.description,
+        handler: function (response: any) {
+          console.log("Payment success", response);
+          setIsPaymentModalOpen(true);
+        },
+        prefill: {
+          name: "User",
+          email: "user@example.com",
+        },
+        theme: {
+          color: "#6366f1",
+        },
       };
 
-      setScannedPayment(dummyPayment);
-      setIsPaymentModalOpen(true);
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error("QR Scan Error", error);
     }
   };
 
@@ -54,6 +83,7 @@ const ScanPayPage = () => {
       </header>
 
       <QRScanner onClose={() => navigate("/")} onScan={handleQRScanned} />
+
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
         <DialogContent className="sm:max-w-md">
           {scannedPayment && (
