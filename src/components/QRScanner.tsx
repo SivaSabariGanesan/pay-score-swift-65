@@ -1,3 +1,4 @@
+// QRScanner.tsx
 import { useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
@@ -19,17 +20,14 @@ const QRScanner = ({ onClose, onScan }: QRScannerProps) => {
       html5QrCodeRef.current = qr;
 
       qr.start(
-        { facingMode: "environment" }, // Use rear camera
-        {
-          fps: 10,
-          qrbox: 250,
-        },
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
         (decodedText) => {
-          qr.stop(); // Stop scanning
+          qr.stop();
           onScan(decodedText);
         },
         (errorMessage) => {
-          // Ignore scan errors for now
+          // Ignored
         }
       );
     }

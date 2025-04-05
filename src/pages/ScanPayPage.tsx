@@ -1,10 +1,10 @@
+// ScanPayPage.tsx
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import QRScanner from "@/components/QRScanner";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import PaymentModal from "@/components/PaymentModal";
 import { PaymentRequest } from "@/types";
 
 declare global {
@@ -39,36 +39,46 @@ const ScanPayPage = () => {
       };
 
       setScannedPayment(paymentRequest);
-
-      const options = {
-        key: "rzp_test_eDVMj23yL98Hvt", // Replace with your Razorpay Key
-        amount: paymentRequest.amount * 100, // amount in paise
-        currency: "INR",
-        name: paymentRequest.to,
-        description: paymentRequest.description,
-        handler: function (response: any) {
-          console.log("Payment success", response);
-          setIsPaymentModalOpen(true);
-        },
-        prefill: {
-          name: "User",
-          email: "user@example.com",
-        },
-        theme: {
-          color: "#6366f1",
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      setIsPaymentModalOpen(true);
     } catch (error) {
-      console.error("QR Scan Error", error);
+      alert("Invalid QR Code");
     }
   };
 
   const handleClosePaymentModal = () => {
     setIsPaymentModalOpen(false);
     setScannedPayment(null);
+  };
+
+  const triggerPayment = () => {
+    if (!scannedPayment) return;
+
+    const options = {
+      key: "rzp_test_eDVMj23yL98Hvt", // 🔁 Replace with your Razorpay key
+      amount: scannedPayment.amount * 100,
+      currency: "INR",
+      name: scannedPayment.to,
+      description: scannedPayment.description,
+      handler: (response: any) => {
+        console.log("Payment Success:", response);
+        alert("Payment Successful!");
+        handleClosePaymentModal();
+      },
+      prefill: {
+        name: "Test User",
+        email: "test@example.com",
+      },
+      theme: {
+        color: "#6366f1",
+      },
+    };
+
+    if (window.Razorpay) {
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } else {
+      alert("Razorpay SDK not loaded");
+    }
   };
 
   return (
@@ -85,12 +95,23 @@ const ScanPayPage = () => {
       <QRScanner onClose={() => navigate("/")} onScan={handleQRScanned} />
 
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md space-y-4">
           {scannedPayment && (
-            <PaymentModal
-              paymentDetails={scannedPayment}
-              onClose={handleClosePaymentModal}
-            />
+            <>
+              <div>
+                <h2 className="text-lg font-semibold">{scannedPayment.to}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {scannedPayment.description}
+                </p>
+                <p className="text-xl font-bold mt-2">
+                  ₹{scannedPayment.amount}
+                </p>
+              </div>
+
+              <Button className="w-full" onClick={triggerPayment}>
+                Pay ₹{scannedPayment.amount}
+              </Button>
+            </>
           )}
         </DialogContent>
       </Dialog>
