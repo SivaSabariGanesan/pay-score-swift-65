@@ -1,115 +1,101 @@
-import { PaymentRequest, Transaction } from "@/types";
-import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
-import { addTransaction } from "./razorpayUtils";
 
-// Check if MetaMask is installed
-export const isMetaMaskInstalled = (): boolean => {
-  return typeof window !== 'undefined' &&
-    (window as any).ethereum !== undefined &&
-    (window as any).ethereum.isMetaMask === true;
-};
-
-// Get MetaMask Ethereum provider
-export const getEthereumProvider = () => {
-  if (!isMetaMaskInstalled()) {
-    throw new Error("MetaMask is not installed");
+// metamaskUtils.ts
+declare global {
+  interface Window {
+    ethereum?: any;
   }
-  return (window as any).ethereum;
+}
+
+const detectEthereum = () => {
+  return Boolean(window.ethereum);
 };
 
-// Connect to MetaMask
-export const connectMetaMask = async (): Promise<string[]> => {
+const requestAccount = async (): Promise<string[]> => {
+  if (!detectEthereum()) {
+    throw new Error("Ethereum provider not detected. Please install MetaMask.");
+  }
+
   try {
-    const ethereum = getEthereumProvider();
-    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+    // Request account access
+    const accounts: string[] = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+    
     return accounts;
   } catch (error) {
-    console.error("Failed to connect to MetaMask:", error);
-    toast.error("Failed to connect to MetaMask", {
-      description: "Please ensure MetaMask is installed and unlocked",
-    });
+    console.error("Error connecting to MetaMask:", error);
     throw error;
   }
 };
 
-// Convert INR to ETH
-export const convertINRtoETH = (amountINR: number): number => {
-  const exchangeRate = 250000;
-  return amountINR / exchangeRate;
+const getChainId = async (): Promise<string> => {
+  if (!detectEthereum()) {
+    throw new Error("Ethereum provider not detected. Please install MetaMask.");
+  }
+
+  try {
+    const chainId = await window.ethereum.request({
+      method: "eth_chainId",
+    });
+    return chainId;
+  } catch (error) {
+    console.error("Error getting chain ID:", error);
+    throw error;
+  }
 };
 
-// Process payment using MetaMask
-export const processMetaMaskPayment = async (paymentRequest: PaymentRequest): Promise<boolean> => {
+export const sendTransaction = async (
+  to: string,
+  amountInEther: number
+): Promise<string> => {
   try {
-    if (!isMetaMaskInstalled()) {
-      toast.error("MetaMask is not installed", {
-        description: "Please install MetaMask to continue with this payment method",
-      });
-      return false;
-    }
-
-    const accounts = await connectMetaMask();
-    if (accounts.length === 0) {
-      toast.error("No MetaMask accounts found", {
-        description: "Please connect an account in MetaMask",
-      });
-      return false;
-    }
-
+    const accounts = await requestAccount();
     const fromAddress = accounts[0];
-    const ethAmount = convertINRtoETH(paymentRequest.amount);
-    const ethAmountInWei = BigInt(Math.floor(ethAmount * 1e18)).toString(16);
-    const ethAmountHex = `0x${ethAmountInWei}`;
 
-    const toAddress = "0x1234567890123456789012345678901234567890"; // Replace with real recipient
-
-    const transactionParams = {
-      from: fromAddress,
-      to: toAddress,
-      value: ethAmountHex,
-      gas: '0x5208', // 21000 in hex
-    };
-
-    const ethereum = getEthereumProvider();
-    const txHash = await ethereum.request({
-      method: 'eth_sendTransaction',
-      params: [transactionParams],
-    });
-
-    if (txHash) {
-      const transaction: Transaction = {
-        id: uuidv4(),
-        type: "debit",
-        amount: paymentRequest.amount,
-        description: `${paymentRequest.description} (via MetaMask)`,
-        to: paymentRequest.to,
-        date: new Date(),
-        status: "completed",
-        txHash: txHash,
-      };
-
-      addTransaction(transaction);
-
-      const currentBalance = parseFloat(localStorage.getItem("userBalance") || "5000");
-      localStorage.setItem("userBalance", (currentBalance - paymentRequest.amount).toString());
-
-      return true;
+    if (!fromAddress) {
+      throw new Error("No account found. Please connect to MetaMask.");
     }
 
-    return false;
+    // Convert amount to hex (wei)
+    const amountInWei = (amountInEther * 1e18).toString(16);
+    
+    // Send transaction
+    const txHash = await window.ethereum.request({
+      method: "eth_sendTransaction",
+      params: [
+        {
+          from: fromAddress,
+          to,
+          value: "0x" + amountInWei,
+          gas: "0x5208", // 21000 gas (simple ETH transfer)
+        },
+      ],
+    });
+
+    return txHash as string;
   } catch (error) {
-    console.error("MetaMask payment error:", error);
-    let errorMessage = "An error occurred during MetaMask payment";
-
-    if ((error as any)?.code === 4001) {
-      errorMessage = "Transaction rejected by user";
-    }
-
-    toast.error("Payment failed", {
-      description: errorMessage,
-    });
-
-    return false;
+    console.error("Error sending transaction:", error);
+    throw error;
   }
+};
+
+export const connectMetamask = async (): Promise<{ account: string; chainId: string }> => {
+  try {
+    const accounts = await requestAccount();
+    const chainId = await getChainId();
+
+    return {
+      account: accounts[0],
+      chainId,
+    };
+  } catch (error) {
+    console.error("Error connecting to MetaMask:", error);
+    throw error;
+  }
+};
+
+export default {
+  detectEthereum,
+  connectMetamask,
+  sendTransaction,
 };

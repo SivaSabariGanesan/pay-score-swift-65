@@ -12,6 +12,10 @@ import SendMoneyPage from "./pages/SendMoneyPage";
 import FinancePage from "./pages/FinancePage";
 import TransactionHistoryPage from "./pages/TransactionHistoryPage";
 import CreditScorePage from "./pages/CreditScorePage";
+import PersonalLoanPage from "./pages/PersonalLoanPage";
+import CreditCardPage from "./pages/CreditCardPage";
+import InvestmentPage from "./pages/InvestmentPage";
+import InsurancePage from "./pages/InsurancePage";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +31,10 @@ const App = () => (
           <Route path="/bill-pay" element={<BillPayPage />} />
           <Route path="/send-money" element={<SendMoneyPage />} />
           <Route path="/finance" element={<FinancePage />} />
+          <Route path="/finance/personal-loan" element={<PersonalLoanPage />} />
+          <Route path="/finance/credit-card" element={<CreditCardPage />} />
+          <Route path="/finance/investments" element={<InvestmentPage />} />
+          <Route path="/finance/insurance" element={<InsurancePage />} />
           <Route path="/history" element={<TransactionHistoryPage />} />
           <Route path="/credit-score" element={<CreditScorePage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

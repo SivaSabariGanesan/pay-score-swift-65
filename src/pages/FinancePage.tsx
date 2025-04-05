@@ -2,16 +2,28 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BarChart } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowLeft, BarChart, CreditCard, Heart, PiggyBank } from "lucide-react";
 
 const FinancePage = () => {
   const navigate = useNavigate();
   
   const handleFinanceOptionClick = (option: string) => {
-    toast.info("Coming Soon", {
-      description: `${option} feature will be available soon!`
-    });
+    switch(option) {
+      case "Check Personal Loan Offers":
+        navigate("/finance/personal-loan");
+        break;
+      case "Apply for Credit Card":
+        navigate("/finance/credit-card");
+        break;
+      case "Investment Options":
+        navigate("/finance/investments");
+        break;
+      case "Insurance Plans":
+        navigate("/finance/insurance");
+        break;
+      default:
+        break;
+    }
   };
 
   return (
@@ -31,22 +43,41 @@ const FinancePage = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-4">
-            {[
-              "Check Personal Loan Offers",
-              "Apply for Credit Card",
-              "Investment Options",
-              "Insurance Plans"
-            ].map((option) => (
-              <Button 
-                key={option}
-                variant="outline" 
-                className="h-auto py-4 flex items-center justify-start gap-2 w-full"
-                onClick={() => handleFinanceOptionClick(option)}
-              >
-                <BarChart className="h-4 w-4" />
-                <span>{option}</span>
-              </Button>
-            ))}
+            <Button 
+              variant="outline" 
+              className="h-auto py-4 flex items-center justify-start gap-2 w-full"
+              onClick={() => handleFinanceOptionClick("Check Personal Loan Offers")}
+            >
+              <PiggyBank className="h-5 w-5 text-primary" />
+              <span>Check Personal Loan Offers</span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="h-auto py-4 flex items-center justify-start gap-2 w-full"
+              onClick={() => handleFinanceOptionClick("Apply for Credit Card")}
+            >
+              <CreditCard className="h-5 w-5 text-secondary" />
+              <span>Apply for Credit Card</span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="h-auto py-4 flex items-center justify-start gap-2 w-full"
+              onClick={() => handleFinanceOptionClick("Investment Options")}
+            >
+              <BarChart className="h-5 w-5 text-green-600" />
+              <span>Investment Options</span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="h-auto py-4 flex items-center justify-start gap-2 w-full"
+              onClick={() => handleFinanceOptionClick("Insurance Plans")}
+            >
+              <Heart className="h-5 w-5 text-red-500" />
+              <span>Insurance Plans</span>
+            </Button>
           </div>
           <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
             Back to Home

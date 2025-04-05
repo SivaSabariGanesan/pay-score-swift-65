@@ -1,3 +1,4 @@
+
 // QRScanner.tsx
 import { useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
