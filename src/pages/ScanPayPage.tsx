@@ -30,20 +30,36 @@ const ScanPayPage = () => {
 
   const handleQRScanned = (data: string) => {
     try {
-      const paymentData = JSON.parse(data);
-
-      const paymentRequest: PaymentRequest = {
-        amount: paymentData.amount || 100,
-        to: paymentData.to || "Merchant",
-        description: paymentData.description || "QR Code Payment",
-      };
-
-      setScannedPayment(paymentRequest);
-      setIsPaymentModalOpen(true);
+      if (data.startsWith("upi://pay")) {
+        // Handle UPI format
+        const url = new URL(data);
+        const params = new URLSearchParams(url.search);
+  
+        const upiPayment: PaymentRequest = {
+          to: params.get("pn") || params.get("pa") || "UPI Merchant",
+          amount: Number(params.get("am")) || 0,
+          description: "UPI Payment",
+        };
+  
+        setScannedPayment(upiPayment);
+        setIsPaymentModalOpen(true);
+      } else {
+        // Handle JSON format
+        const paymentData = JSON.parse(data);
+        const paymentRequest: PaymentRequest = {
+          amount: paymentData.amount || 100,
+          to: paymentData.to || "Merchant",
+          description: paymentData.description || "QR Code Payment",
+        };
+  
+        setScannedPayment(paymentRequest);
+        setIsPaymentModalOpen(true);
+      }
     } catch (error) {
-      alert("Invalid QR Code");
+      alert("Invalid QR code format.");
     }
   };
+  
 
   const handleClosePaymentModal = () => {
     setIsPaymentModalOpen(false);
