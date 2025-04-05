@@ -1,10 +1,14 @@
 
 // metamaskUtils.ts
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
+// Using the type definition from types/index.ts instead of redefining it here
+import { PaymentRequest } from "@/types";
+
+// Remove the duplicate declaration as it's already in types/index.ts
+// declare global {
+//   interface Window {
+//     ethereum?: any;
+//   }
+// }
 
 const detectEthereum = () => {
   return Boolean(window.ethereum);
@@ -17,11 +21,16 @@ const requestAccount = async (): Promise<string[]> => {
 
   try {
     // Request account access
-    const accounts: string[] = await window.ethereum.request({
+    const accounts = await window.ethereum.request({
       method: "eth_requestAccounts",
     });
     
-    return accounts;
+    // Make sure we return an array of strings
+    if (Array.isArray(accounts)) {
+      return accounts as string[];
+    }
+    
+    throw new Error("Invalid response from MetaMask");
   } catch (error) {
     console.error("Error connecting to MetaMask:", error);
     throw error;
@@ -37,7 +46,9 @@ const getChainId = async (): Promise<string> => {
     const chainId = await window.ethereum.request({
       method: "eth_chainId",
     });
-    return chainId;
+    
+    // Ensure we return a string
+    return String(chainId);
   } catch (error) {
     console.error("Error getting chain ID:", error);
     throw error;
@@ -72,7 +83,7 @@ export const sendTransaction = async (
       ],
     });
 
-    return txHash as string;
+    return String(txHash); // Ensure we return a string
   } catch (error) {
     console.error("Error sending transaction:", error);
     throw error;
@@ -94,8 +105,33 @@ export const connectMetamask = async (): Promise<{ account: string; chainId: str
   }
 };
 
+// Add the processMetaMaskPayment function
+export const processMetaMaskPayment = async (paymentDetails: PaymentRequest): Promise<boolean> => {
+  try {
+    // Convert INR to ETH (this is a simplified conversion)
+    // In a real app, you would use an exchange rate API
+    const estimatedEthAmount = paymentDetails.amount / 200000; // Example rate: 1 ETH = 200,000 INR
+    
+    // For destination address, we're using a dummy address for the demo
+    // In a real app, you would use the actual recipient's Ethereum address
+    const recipientAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"; // Example address
+    
+    // Send the transaction
+    const txHash = await sendTransaction(recipientAddress, estimatedEthAmount);
+    
+    console.log("MetaMask transaction successful:", txHash);
+    
+    // Return true to indicate success
+    return true;
+  } catch (error) {
+    console.error("MetaMask payment failed:", error);
+    throw error;
+  }
+};
+
 export default {
   detectEthereum,
   connectMetamask,
   sendTransaction,
+  processMetaMaskPayment,
 };
