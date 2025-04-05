@@ -59,7 +59,9 @@ const ScanPayPage = () => {
         }
       }
     } catch (error) {
+      console.error("Error processing QR data:", error);
       toast.error("Invalid QR code format");
+      // Don't stop scanning on error so user can try again
       setIsScanning(true);
     }
   };
@@ -67,6 +69,7 @@ const ScanPayPage = () => {
   const handleClosePaymentModal = () => {
     setIsPaymentModalOpen(false);
     setScannedPayment(null);
+    // Allow user to scan again after closing payment modal
     setIsScanning(true);
   };
 

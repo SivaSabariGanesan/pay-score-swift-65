@@ -15,6 +15,7 @@ const QRScanner = ({ onClose, onScan }: QRScannerProps) => {
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const [hasError, setHasError] = useState(false);
   const [isCameraPermissionDenied, setCameraPermissionDenied] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
     const qrCodeRegionId = "qr-reader";
@@ -30,12 +31,29 @@ const QRScanner = ({ onClose, onScan }: QRScannerProps) => {
         (decodedText) => {
           if (isUnmounted) return;
           
-          // Stop scanning on successful scan
-          qr.stop().then(() => {
-            if (!isUnmounted) {
-              onScan(decodedText);
+          // Set scanning state to true when scanner starts successfully
+          setIsScanning(true);
+          
+          // Only attempt to stop if scanner is running
+          if (isUnmounted) return;
+          
+          try {
+            // First set the data
+            onScan(decodedText);
+            
+            // Then safely stop the scanner
+            if (qr.isScanning) {
+              qr.stop().then(() => {
+                console.log("QR scanner stopped successfully");
+                setIsScanning(false);
+              }).catch(stopErr => {
+                console.warn("Error stopping scanner:", stopErr);
+              });
             }
-          });
+          } catch (error) {
+            console.error("Error in QR scanning process:", error);
+            // Continue scanning if there was an error in the callback
+          }
         },
         (errorMessage) => {
           console.log("QR Scanner error:", errorMessage);
@@ -49,7 +67,11 @@ const QRScanner = ({ onClose, onScan }: QRScannerProps) => {
             setHasError(true);
           }
         }
-      ).catch((err) => {
+      ).then(() => {
+        // Scanner started successfully
+        setIsScanning(true);
+        console.log("Scanner started successfully");
+      }).catch((err) => {
         console.error("Failed to start scanner:", err);
         setHasError(true);
         
@@ -64,9 +86,30 @@ const QRScanner = ({ onClose, onScan }: QRScannerProps) => {
 
     return () => {
       isUnmounted = true;
-      html5QrCodeRef.current?.stop().then(() => {
-        html5QrCodeRef.current?.clear();
-      }).catch(err => console.error("Error stopping scanner:", err));
+      
+      // Only attempt to stop if scanner exists and is scanning
+      if (html5QrCodeRef.current && isScanning) {
+        try {
+          html5QrCodeRef.current.stop().then(() => {
+            console.log("Scanner cleaned up successfully");
+            if (html5QrCodeRef.current) {
+              html5QrCodeRef.current.clear();
+            }
+          }).catch(err => {
+            console.warn("Error stopping scanner during cleanup:", err);
+            // Try to clear anyway
+            if (html5QrCodeRef.current) {
+              try {
+                html5QrCodeRef.current.clear();
+              } catch (clearErr) {
+                console.warn("Error clearing scanner:", clearErr);
+              }
+            }
+          });
+        } catch (err) {
+          console.warn("Error in scanner cleanup:", err);
+        }
+      }
     };
   }, [onScan]);
 
