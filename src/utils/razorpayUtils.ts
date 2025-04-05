@@ -1,13 +1,13 @@
+import { Http } from '@capacitor/http';
 import { PaymentRequest, RazorpayOptions, Transaction } from "@/types";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { updateCreditScoreWithTransaction } from "./creditScoreUtils";
 
-// Razorpay API keys (Test keys provided by the user)
 const RAZORPAY_KEY_ID = "rzp_test_eDVMj23yL98Hvt";
-const RAZORPAY_KEY_SECRET = "LOr3SG3XRnMpgduiMYqljwgH";
+const BACKEND_URL = "https://pay-score-swift-1.onrender.com/create-order";
 
-// Get or initialize transactions from localStorage
+// Get transactions from localStorage
 export const getTransactions = (): Transaction[] => {
   const savedTransactions = localStorage.getItem("transactions");
   return savedTransactions 
@@ -23,7 +23,7 @@ export const saveTransactions = (transactions: Transaction[]): void => {
   localStorage.setItem("transactions", JSON.stringify(transactions));
 };
 
-// Add a new transaction and update credit score
+// Add transaction and update credit score
 export const addTransaction = (transaction: Transaction): void => {
   const transactions = getTransactions();
   transactions.unshift(transaction);
@@ -38,37 +38,38 @@ export const addTransaction = (transaction: Transaction): void => {
   );
 };
 
-// ✅ Corrected backend URL with `/create-order` endpoint
-const BACKEND_URL = "https://b507-115-245-95-250.ngrok-free.app/create-order";
-
-// Create a Razorpay order
+// Create Razorpay Order using Capacitor HTTP
 export const createOrderId = async (amount: number): Promise<string> => {
-  const response = await fetch(BACKEND_URL, {
+  const response = await Http.request({
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount }),
+    url: BACKEND_URL,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: { amount },
   });
 
-  if (!response.ok) throw new Error("Failed to create order");
-
-  const data = await response.json();
-  return data.id;
+  if (!response || !response.data?.id) throw new Error("Failed to create order");
+  return response.data.id;
 };
 
-// Process payment using Razorpay
+// Process Razorpay Payment
 export const processPayment = async (paymentRequest: PaymentRequest): Promise<boolean> => {
   try {
     if (!(window as any).Razorpay) throw new Error("Razorpay SDK not loaded");
 
-    const response = await fetch(BACKEND_URL, {
+    const response = await Http.request({
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: paymentRequest.amount }),
+      url: BACKEND_URL,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      data: { amount: paymentRequest.amount },
     });
 
-    if (!response.ok) throw new Error("Failed to create order");
+    if (!response || !response.data?.id) throw new Error("Failed to create order");
 
-    const { id: orderId, amount } = await response.json();
+    const { id: orderId, amount } = response.data;
 
     return new Promise((resolve, reject) => {
       const options: RazorpayOptions = {
@@ -136,7 +137,7 @@ export const processPayment = async (paymentRequest: PaymentRequest): Promise<bo
   }
 };
 
-// Initialize mock data
+// Initialize mock user data
 export const initializeUserData = (): void => {
   if (!localStorage.getItem("userBalance")) {
     localStorage.setItem("userBalance", "5000");
