@@ -1,9 +1,9 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import CreditScore from "@/components/CreditScore";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, TrendingUp, History, ChevronRight } from "lucide-react";
+import { ArrowLeft, TrendingUp, History, ChevronRight, DollarSign, CreditCard, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Table,
@@ -17,10 +17,12 @@ import { getTransactions } from "../utils/creditScoreUtils";
 import { Transaction } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
 const CreditScorePage = () => {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [activeTab, setActiveTab] = useState("history");
 
   useEffect(() => {
     const savedTransactions = getTransactions();
@@ -60,6 +62,34 @@ const CreditScorePage = () => {
     });
   };
 
+  // Calculate metrics for loan tab
+  const loanMetrics = useMemo(() => {
+    const loanTransactions = transactions.filter(
+      txn => txn.description.toLowerCase().includes("loan")
+    );
+    
+    const totalDisbursed = loanTransactions
+      .filter(txn => txn.type === "credit")
+      .reduce((sum, txn) => sum + txn.amount, 0);
+      
+    const totalRepaid = loanTransactions
+      .filter(txn => txn.type === "debit")
+      .reduce((sum, txn) => sum + txn.amount, 0);
+      
+    const activeLoans = new Set(
+      loanTransactions
+        .filter(txn => txn.type === "credit")
+        .map(txn => txn.description)
+    ).size;
+    
+    return {
+      totalDisbursed,
+      totalRepaid,
+      activeLoans,
+      outstandingAmount: Math.max(0, totalDisbursed - totalRepaid)
+    };
+  }, [transactions]);
+
   return (
     <div className="max-w-md mx-auto px-4 py-6 min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <header className="mb-6">
@@ -75,8 +105,13 @@ const CreditScorePage = () => {
         <CreditScore />
       </div>
 
-      <Tabs defaultValue="history" className="w-full animate-fade-in">
-        <TabsList className="grid w-full grid-cols-2 mb-4">
+      <Tabs 
+        defaultValue="history" 
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full animate-fade-in"
+      >
+        <TabsList className="grid w-full grid-cols-3 mb-4">
           <TabsTrigger value="history" className="flex items-center gap-2">
             <History className="h-4 w-4" />
             Transactions
@@ -84,6 +119,10 @@ const CreditScorePage = () => {
           <TabsTrigger value="impact" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Score Impact
+          </TabsTrigger>
+          <TabsTrigger value="loans" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Loans
           </TabsTrigger>
         </TabsList>
         
@@ -170,7 +209,7 @@ const CreditScorePage = () => {
                       </li>
                       <li className="flex items-start gap-2">
                         <div className="h-4 w-4 rounded-full bg-green-500 mt-1 flex-shrink-0" />
-                        <span>Regular transactions</span>
+                        <span>Regular loan repayments</span>
                       </li>
                     </ul>
                   </CardContent>
@@ -190,7 +229,7 @@ const CreditScorePage = () => {
                       </li>
                       <li className="flex items-start gap-2">
                         <div className="h-4 w-4 rounded-full bg-red-500 mt-1 flex-shrink-0" />
-                        <span>Multiple inquiries</span>
+                        <span>Multiple new loans</span>
                       </li>
                     </ul>
                   </CardContent>
@@ -201,23 +240,138 @@ const CreditScorePage = () => {
                 <h3 className="text-sm font-medium text-blue-800 mb-2">Recent Score Changes</h3>
                 {transactions.length > 0 ? (
                   <div className="space-y-2">
-                    {transactions.slice(0, 3).map((txn) => (
-                      <div key={txn.id} className="flex justify-between items-center text-sm border-b pb-2">
-                        <div>
-                          <span className="font-medium">{txn.description}</span>
-                          <div className="text-xs text-gray-500">{formatDate(new Date(txn.date))}</div>
+                    {transactions.slice(0, 3).map((txn) => {
+                      // Determine score impact
+                      let impact = "0";
+                      let impactClass = "text-gray-500";
+                      
+                      if (txn.status === "completed") {
+                        if (txn.description.toLowerCase().includes("loan")) {
+                          if (txn.type === "credit") {
+                            impact = "-2 to -5";
+                            impactClass = "text-red-500";
+                          } else {
+                            impact = "+2 to +8";
+                            impactClass = "text-green-600";
+                          }
+                        } else if (txn.type === "debit") {
+                          impact = "+1 to +5";
+                          impactClass = "text-green-600";
+                        } else {
+                          impact = "+0 to +1";
+                          impactClass = "text-green-600";
+                        }
+                      }
+                      
+                      return (
+                        <div key={txn.id} className="flex justify-between items-center text-sm border-b pb-2">
+                          <div>
+                            <span className="font-medium">{txn.description}</span>
+                            <div className="text-xs text-gray-500">{formatDate(new Date(txn.date))}</div>
+                          </div>
+                          <div className="text-right">
+                            <span className={txn.status === "completed" ? impactClass : "text-gray-500"}>
+                              {txn.status === "completed" ? impact + " points" : "pending"}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <span className={txn.status === "completed" ? "text-green-600" : "text-gray-500"}>
-                            {txn.status === "completed" ? "+2 points" : "pending"}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-center text-muted-foreground text-sm py-2">No recent changes</p>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="loans">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Loan Overview</CardTitle>
+              <CardDescription>Your loan activity and repayment history</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="border p-4 bg-blue-50">
+                  <div className="text-sm text-blue-800 font-medium mb-1">Active Loans</div>
+                  <div className="flex items-baseline">
+                    <span className="text-2xl font-bold text-blue-900">{loanMetrics.activeLoans}</span>
+                  </div>
+                </Card>
+                
+                <Card className="border p-4 bg-amber-50">
+                  <div className="text-sm text-amber-800 font-medium mb-1">Outstanding Amount</div>
+                  <div className="text-lg font-bold text-amber-900">
+                    {formatCurrency(loanMetrics.outstandingAmount)}
+                  </div>
+                </Card>
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Loan Activity</h3>
+                
+                {transactions.filter(txn => txn.description.toLowerCase().includes("loan")).length > 0 ? (
+                  <div className="space-y-3 mt-3">
+                    {transactions
+                      .filter(txn => txn.description.toLowerCase().includes("loan"))
+                      .slice(0, 5)
+                      .map((txn) => (
+                        <div key={txn.id} className="flex justify-between items-center border rounded-lg p-3 hover:bg-gray-50">
+                          <div>
+                            <div className="font-medium text-sm">{txn.description}</div>
+                            <div className="text-xs text-gray-500">{formatDate(new Date(txn.date))}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`font-semibold ${txn.type === "credit" ? "text-green-600" : "text-red-500"}`}>
+                              {txn.type === "credit" ? "+" : "-"}{formatCurrency(txn.amount)}
+                            </div>
+                            <Badge
+                              variant={
+                                txn.type === "credit" ? "default" : 
+                                txn.status === "completed" ? "outline" : "destructive"
+                              }
+                              className={`mt-1 ${txn.type === "credit" ? "bg-blue-500" : ""}`}
+                            >
+                              {txn.type === "credit" ? "Disbursement" : "Repayment"}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                      
+                    <div className="flex justify-center mt-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-xs"
+                        onClick={() => setActiveTab("history")}
+                      >
+                        View all transactions
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center py-6 text-center">
+                    <AlertTriangle className="h-8 w-8 text-gray-400 mb-2" />
+                    <p className="text-muted-foreground">No loan activity found</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-4"
+                      onClick={() => navigate("/finance/personal-loan")}
+                    >
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      Explore loan options
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800 mt-4">
+                <p>Your loan repayment behavior has a significant impact on your credit score. Regular, on-time payments can improve your score by 2-8 points each time.</p>
               </div>
             </CardContent>
           </Card>

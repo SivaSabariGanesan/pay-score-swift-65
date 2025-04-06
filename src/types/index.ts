@@ -1,4 +1,3 @@
-
 export interface Transaction {
   id: string;
   type: 'credit' | 'debit';
@@ -9,6 +8,7 @@ export interface Transaction {
   date: Date;
   status: 'completed' | 'pending' | 'failed';
   txHash?: string; // For blockchain transactions
+  category?: string; // To categorize transactions (bill, loan, general, etc.)
 }
 
 export interface CreditScoreData {
@@ -24,6 +24,11 @@ export interface CreditScoreData {
   factors: {
     positive: string[];
     negative: string[];
+  };
+  loanInformation: {
+    activeLoans: number;
+    totalLoanAmount: number;
+    onTimeLoanPayments: number;
   };
 }
 
@@ -61,7 +66,6 @@ export interface RazorpayOptions {
   };
 }
 
-// MetaMask specific types
 declare global {
   interface Window {
     ethereum?: {

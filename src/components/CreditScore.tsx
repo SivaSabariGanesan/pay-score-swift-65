@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CreditScoreData } from "@/types";
 import { getCreditScore } from "@/utils/creditScoreUtils";
-import { TrendingUp, Clock, AlertTriangle, CheckCircle, AlertCircle } from "lucide-react";
+import { TrendingUp, Clock, AlertTriangle, CheckCircle, AlertCircle, DollarSign } from "lucide-react";
 
 const CreditScore = () => {
   const [creditScore, setCreditScore] = useState<CreditScoreData | null>(null);
@@ -150,6 +150,28 @@ const CreditScore = () => {
             </div>
           </div>
 
+          {/* Loan information section */}
+          {creditScore.loanInformation && (
+            <div className="mb-6">
+              <div className="border rounded-lg p-4 bg-blue-50">
+                <h3 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
+                  <DollarSign className="h-4 w-4 mr-1" />
+                  Loan Status
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-blue-700">Active Loans</p>
+                    <p className="text-lg font-bold">{creditScore.loanInformation.activeLoans}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-blue-700">On-time Payments</p>
+                    <p className="text-lg font-bold">{creditScore.loanInformation.onTimeLoanPayments}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <Separator className="my-4" />
           
           <div className="space-y-4">
@@ -199,7 +221,7 @@ const CreditScore = () => {
             Making payments on time and keeping your credit utilization low 
             will help improve your score over time.
           </p>
-          <div className="grid grid-cols-3 gap-2 mt-4 text-center text-xs">
+          <div className="grid grid-cols-4 gap-2 mt-4 text-center text-xs">
             <div className="p-2 bg-primary/10 rounded-lg">
               <div className="font-medium mb-1">Payment History</div>
               <div className="text-muted-foreground">35%</div>
@@ -207,6 +229,10 @@ const CreditScore = () => {
             <div className="p-2 bg-primary/10 rounded-lg">
               <div className="font-medium mb-1">Credit Usage</div>
               <div className="text-muted-foreground">30%</div>
+            </div>
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <div className="font-medium mb-1">Loan Activity</div>
+              <div className="text-muted-foreground">20%</div>
             </div>
             <div className="p-2 bg-primary/10 rounded-lg">
               <div className="font-medium mb-1">Credit Age</div>

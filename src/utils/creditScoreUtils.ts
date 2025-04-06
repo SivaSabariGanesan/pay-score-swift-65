@@ -20,6 +20,11 @@ const initialCreditScore: CreditScoreData = {
     ],
     negative: ["Recent credit inquiries"],
   },
+  loanInformation: {
+    activeLoans: 0,
+    totalLoanAmount: 0,
+    onTimeLoanPayments: 0
+  }
 };
 
 // --- Get Credit Score ---
@@ -28,6 +33,14 @@ export const getCreditScore = (): CreditScoreData => {
   if (savedData) {
     const parsed = JSON.parse(savedData);
     parsed.lastUpdated = new Date(parsed.lastUpdated);
+    // Ensure loanInformation exists (for backward compatibility)
+    if (!parsed.loanInformation) {
+      parsed.loanInformation = {
+        activeLoans: 0,
+        totalLoanAmount: 0,
+        onTimeLoanPayments: 0
+      };
+    }
     return parsed;
   }
   return initialCreditScore;
@@ -70,8 +83,72 @@ export const calculateCreditScore = (
 
   // Only completed transactions affect the score
   if (transaction.status === "completed") {
-    // Payment behavior - debit transactions (payments made)
-    if (transaction.type === "debit") {
+    // Check if this is a loan transaction
+    const isLoanTransaction = transaction.description.toLowerCase().includes("loan");
+    
+    // Loan disbursement - increases credit utilization but decreases score slightly
+    if (isLoanTransaction && transaction.type === "credit") {
+      // Update loan information
+      newScore.loanInformation.activeLoans += 1;
+      newScore.loanInformation.totalLoanAmount += transaction.amount;
+      
+      // Increase credit utilization
+      const utilizationIncrease = Math.min(10, transaction.amount / 20000);
+      newScore.creditUtilization = Math.min(100, 
+        parseFloat((newScore.creditUtilization + utilizationIncrease).toFixed(1))
+      );
+      
+      // Small decrease in score for new loan
+      const scoreDecrease = Math.min(5, transaction.amount / 50000);
+      newScore.score = Math.max(300, newScore.score - scoreDecrease);
+      
+      // Add factor if not already there
+      if (!newScore.factors.negative.includes("Outstanding loans")) {
+        newScore.factors.negative.push("Outstanding loans");
+      }
+    }
+    
+    // Loan repayment - positive impact
+    else if (isLoanTransaction && transaction.type === "debit") {
+      // Update loan repayment history
+      newScore.loanInformation.onTimeLoanPayments += 1;
+      
+      // Decrease total loan amount
+      newScore.loanInformation.totalLoanAmount = Math.max(0, 
+        newScore.loanInformation.totalLoanAmount - transaction.amount
+      );
+      
+      // Check if loan is fully paid
+      if (newScore.loanInformation.totalLoanAmount === 0) {
+        newScore.loanInformation.activeLoans = Math.max(0, newScore.loanInformation.activeLoans - 1);
+      }
+      
+      // Positive score impact for repayment
+      const scoreIncrease = Math.min(8, Math.max(2, transaction.amount / 10000));
+      newScore.score = Math.min(newScore.maxScore, newScore.score + scoreIncrease);
+      
+      // Add positive factor if not already there
+      if (!newScore.factors.positive.includes("Regular loan payments")) {
+        newScore.factors.positive.push("Regular loan payments");
+      }
+      
+      // Remove negative factor if no active loans
+      if (newScore.loanInformation.activeLoans === 0) {
+        const loanIndex = newScore.factors.negative.indexOf("Outstanding loans");
+        if (loanIndex > -1) {
+          newScore.factors.negative.splice(loanIndex, 1);
+        }
+      }
+      
+      // Decrease credit utilization
+      const utilizationDecrease = Math.min(5, transaction.amount / 20000);
+      newScore.creditUtilization = Math.max(0, 
+        parseFloat((newScore.creditUtilization - utilizationDecrease).toFixed(1))
+      );
+    }
+    
+    // Regular payment behavior - debit transactions (payments made)
+    else if (transaction.type === "debit") {
       newScore.paymentHistory.onTimePayments += 1;
       // Increase score for on-time payments (between 1-5 points based on amount)
       const scoreIncrease = Math.min(Math.max(1, Math.floor(transaction.amount / 500)), 5);
@@ -96,7 +173,7 @@ export const calculateCreditScore = (
     }
     
     // Receiving money (credit transactions)
-    if (transaction.type === "credit") {
+    else if (transaction.type === "credit") {
       // Small positive impact for receiving payments
       const smallIncrease = Math.min(1, transaction.amount / 2000);
       newScore.score = Math.min(newScore.score + smallIncrease, newScore.maxScore);
@@ -187,3 +264,30 @@ export const initializeCreditScore = (): void => {
     saveCreditScore(initialCreditScore);
   }
 };
+
+// Estimate score impact for different transaction types
+export const estimateScoreImpact = (transactionType: string, amount: number): { impact: number; description: string } => {
+  switch (transactionType) {
+    case "payment":
+      return {
+        impact: Math.min(Math.max(1, Math.floor(amount / 500)), 5),
+        description: "On-time payment"
+      };
+    case "loan_disbursement":
+      return {
+        impact: -Math.min(5, amount / 50000),
+        description: "New loan"
+      };
+    case "loan_repayment":
+      return {
+        impact: Math.min(8, Math.max(2, amount / 10000)),
+        description: "Loan repayment"
+      };
+    default:
+      return {
+        impact: 0,
+        description: "No impact"
+      };
+  }
+};
+
