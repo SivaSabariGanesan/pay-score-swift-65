@@ -4,14 +4,50 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, DollarSign, Info } from "lucide-react";
 import { toast } from "sonner";
+import { Transaction } from "@/types";
+import { v4 as uuidv4 } from "uuid";
+import { updateCreditScoreWithTransaction } from "@/utils/creditScoreUtils";
 
 const PersonalLoanPage = () => {
   const navigate = useNavigate();
   
-  const handleApplyClick = (loanAmount: string, interestRate: string) => {
-    toast.success("Loan application initiated", {
-      description: `Your application for ₹${loanAmount} at ${interestRate}% interest rate is being processed.`
+  const handleApplyClick = (loanAmount: string, interestRate: string, term: string = "36 months") => {
+    // Create a new transaction for the loan application
+    const numericAmount = parseFloat(loanAmount.replace(/[^\d]/g, ''));
+    
+    const transaction: Transaction = {
+      id: uuidv4(),
+      type: "credit",
+      amount: numericAmount,
+      description: `Personal Loan at ${interestRate}%`,
+      from: "Pay Swift Bank",
+      date: new Date(),
+      status: "completed",
+      category: "loan",
+      productDetails: {
+        type: "personal-loan",
+        name: `Personal Loan - ${loanAmount}`,
+        interestRate: `${interestRate}%`,
+        term: term,
+        provider: "Pay Swift Bank"
+      }
+    };
+    
+    // Update credit score with the transaction
+    updateCreditScoreWithTransaction(transaction);
+    
+    // Update user balance
+    const currentBalance = parseFloat(localStorage.getItem("userBalance") || "5000");
+    localStorage.setItem("userBalance", (currentBalance + numericAmount).toFixed(2));
+    
+    toast.success("Loan application approved", {
+      description: `Your loan of ₹${loanAmount} at ${interestRate}% interest rate has been approved and disbursed.`
     });
+    
+    // Navigate to credit score page to show the impact
+    setTimeout(() => {
+      navigate("/credit-score");
+    }, 1500);
   };
 
   return (
@@ -46,7 +82,7 @@ const PersonalLoanPage = () => {
             </div>
             <Button 
               className="w-full" 
-              onClick={() => handleApplyClick("2,00,000", "10.5")}
+              onClick={() => handleApplyClick("2,00,000", "10.5", "36 months")}
             >
               Apply Now
             </Button>
@@ -71,7 +107,7 @@ const PersonalLoanPage = () => {
             <Button 
               className="w-full" 
               variant="outline"
-              onClick={() => handleApplyClick("5,00,000", "12.25")}
+              onClick={() => handleApplyClick("5,00,000", "12.25", "60 months")}
             >
               Check Eligibility
             </Button>
@@ -96,7 +132,7 @@ const PersonalLoanPage = () => {
             <Button 
               className="w-full" 
               variant="outline"
-              onClick={() => handleApplyClick("10,00,000", "8.5")}
+              onClick={() => handleApplyClick("10,00,000", "8.5", "84 months")}
             >
               Check Eligibility
             </Button>

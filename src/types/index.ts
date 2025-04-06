@@ -9,6 +9,13 @@ export interface Transaction {
   status: 'completed' | 'pending' | 'failed';
   txHash?: string; // For blockchain transactions
   category?: string; // To categorize transactions (bill, loan, general, etc.)
+  productDetails?: {
+    type: 'personal-loan' | 'credit-card' | 'investment' | 'insurance' | 'other';
+    name: string;
+    interestRate?: string;
+    term?: string;
+    provider?: string;
+  };
 }
 
 export interface CreditScoreData {

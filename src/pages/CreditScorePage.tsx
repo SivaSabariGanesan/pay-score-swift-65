@@ -1,9 +1,8 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import CreditScore from "@/components/CreditScore";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, TrendingUp, History, ChevronRight, DollarSign, CreditCard, AlertTriangle } from "lucide-react";
+import { ArrowLeft, TrendingUp, History, ChevronRight, DollarSign, CreditCard, AlertTriangle, Receipt } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Table,
@@ -23,16 +22,28 @@ const CreditScorePage = () => {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState("history");
+  const [financeProducts, setFinanceProducts] = useState<Transaction[]>([]);
 
   useEffect(() => {
     const savedTransactions = getTransactions();
     setTransactions(savedTransactions);
+    
+    // Filter out finance product transactions
+    const products = savedTransactions.filter(
+      t => t.productDetails || t.description.toLowerCase().includes("loan")
+    );
+    setFinanceProducts(products);
     
     // Listen for transaction updates
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "transactions") {
         const updatedTransactions = getTransactions();
         setTransactions(updatedTransactions);
+        
+        const products = updatedTransactions.filter(
+          t => t.productDetails || t.description.toLowerCase().includes("loan")
+        );
+        setFinanceProducts(products);
       }
     };
     
@@ -61,6 +72,20 @@ const CreditScorePage = () => {
       year: "numeric",
     });
   };
+
+  // Group finance products by type
+  const groupedProducts = useMemo(() => {
+    return financeProducts.reduce((acc, product) => {
+      const type = product.productDetails?.type || 
+                   (product.description.toLowerCase().includes("loan") ? "personal-loan" : "other");
+      
+      if (!acc[type]) {
+        acc[type] = [];
+      }
+      acc[type].push(product);
+      return acc;
+    }, {} as Record<string, Transaction[]>);
+  }, [financeProducts]);
 
   // Calculate metrics for loan tab
   const loanMetrics = useMemo(() => {
@@ -111,18 +136,22 @@ const CreditScorePage = () => {
         onValueChange={setActiveTab}
         className="w-full animate-fade-in"
       >
-        <TabsList className="grid w-full grid-cols-3 mb-4">
-          <TabsTrigger value="history" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-4 mb-4">
+          <TabsTrigger value="history" className="flex items-center gap-1 text-xs">
             <History className="h-4 w-4" />
-            Transactions
+            <span className="hidden sm:inline">Transactions</span>
           </TabsTrigger>
-          <TabsTrigger value="impact" className="flex items-center gap-2">
+          <TabsTrigger value="impact" className="flex items-center gap-1 text-xs">
             <TrendingUp className="h-4 w-4" />
-            Score Impact
+            <span className="hidden sm:inline">Score Impact</span>
           </TabsTrigger>
-          <TabsTrigger value="loans" className="flex items-center gap-2">
+          <TabsTrigger value="loans" className="flex items-center gap-1 text-xs">
             <CreditCard className="h-4 w-4" />
-            Loans
+            <span className="hidden sm:inline">Loans</span>
+          </TabsTrigger>
+          <TabsTrigger value="products" className="flex items-center gap-1 text-xs">
+            <Receipt className="h-4 w-4" />
+            <span className="hidden sm:inline">Products</span>
           </TabsTrigger>
         </TabsList>
         
@@ -373,6 +402,85 @@ const CreditScorePage = () => {
               <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800 mt-4">
                 <p>Your loan repayment behavior has a significant impact on your credit score. Regular, on-time payments can improve your score by 2-8 points each time.</p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="products">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Financial Products</CardTitle>
+              <CardDescription>Your active financial products and applications</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {Object.keys(groupedProducts).length > 0 ? (
+                Object.entries(groupedProducts).map(([type, products]) => (
+                  <div key={type} className="space-y-3">
+                    <h3 className="text-sm font-medium capitalize flex items-center gap-2">
+                      {type === 'personal-loan' && <DollarSign className="h-4 w-4 text-green-600" />}
+                      {type === 'credit-card' && <CreditCard className="h-4 w-4 text-purple-600" />}
+                      {type !== 'personal-loan' && type !== 'credit-card' && <Receipt className="h-4 w-4 text-blue-600" />}
+                      {type.replace(/-/g, ' ')}
+                    </h3>
+                    
+                    <div className="space-y-2">
+                      {products.map((product) => (
+                        <div 
+                          key={product.id} 
+                          className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex justify-between">
+                            <div>
+                              <div className="font-medium">{product.productDetails?.name || product.description}</div>
+                              <div className="text-xs text-gray-500">Applied on {formatDate(new Date(product.date))}</div>
+                              
+                              {(product.productDetails?.interestRate || product.description.includes('%')) && (
+                                <div className="text-xs mt-1 text-green-600 font-medium">
+                                  Interest: {product.productDetails?.interestRate || product.description.match(/\d+\.?\d*%/)?.[0] || 'N/A'}
+                                </div>
+                              )}
+                              
+                              {product.productDetails?.term && (
+                                <div className="text-xs text-blue-600 font-medium">
+                                  Term: {product.productDetails.term}
+                                </div>
+                              )}
+                              
+                              {product.productDetails?.provider && (
+                                <div className="text-xs text-gray-600">
+                                  Provider: {product.productDetails.provider}
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="text-right">
+                              <div className="font-bold">{formatCurrency(product.amount)}</div>
+                              <Badge 
+                                variant={product.status === 'completed' ? 'default' : 
+                                        product.status === 'pending' ? 'outline' : 'destructive'}
+                                className="mt-1"
+                              >
+                                {product.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <Separator className="my-2" />
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center py-8 text-center">
+                  <Receipt className="h-12 w-12 text-gray-300 mb-3" />
+                  <h3 className="text-lg font-medium text-gray-500">No financial products found</h3>
+                  <p className="text-sm text-gray-400 mb-4">You haven't applied for any loans or financial products yet.</p>
+                  <Button variant="outline" onClick={() => navigate('/finance')}>
+                    Explore Financial Products
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

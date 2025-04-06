@@ -1,21 +1,28 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CreditScoreData } from "@/types";
-import { getCreditScore } from "@/utils/creditScoreUtils";
-import { TrendingUp, Clock, AlertTriangle, CheckCircle, AlertCircle, DollarSign } from "lucide-react";
+import { CreditScoreData, Transaction } from "@/types";
+import { getCreditScore, getTransactions } from "@/utils/creditScoreUtils";
+import { TrendingUp, Clock, AlertTriangle, CheckCircle, AlertCircle, DollarSign, CreditCard } from "lucide-react";
 
 const CreditScore = () => {
   const [creditScore, setCreditScore] = useState<CreditScoreData | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [financeProducts, setFinanceProducts] = useState<Transaction[]>([]);
 
   useEffect(() => {
     // Get credit score data
     const score = getCreditScore();
     setCreditScore(score);
+    
+    // Get financial products from transactions
+    const transactions = getTransactions();
+    const products = transactions.filter(
+      t => t.productDetails && t.status !== 'failed'
+    );
+    setFinanceProducts(products);
     
     // Listen for credit score updates
     const handleStorageChange = (e: StorageEvent) => {
@@ -29,6 +36,14 @@ const CreditScore = () => {
           return updatedScore;
         });
       }
+      
+      if (e.key === "transactions") {
+        const transactions = getTransactions();
+        const products = transactions.filter(
+          t => t.productDetails && t.status !== 'failed'
+        );
+        setFinanceProducts(products);
+      }
     };
     
     window.addEventListener("storage", handleStorageChange);
@@ -37,21 +52,6 @@ const CreditScore = () => {
       window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
-
-  if (!creditScore) {
-    return (
-      <div className="flex justify-center items-center min-h-[200px]">
-        <div className="animate-pulse space-y-4">
-          <div className="h-10 bg-slate-200 rounded w-3/4 mx-auto"></div>
-          <div className="h-32 bg-slate-200 rounded"></div>
-          <div className="space-y-2">
-            <div className="h-4 bg-slate-200 rounded"></div>
-            <div className="h-4 bg-slate-200 rounded w-5/6"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Calculate score percentage for progress bar
   const scorePercentage = (creditScore.score / creditScore.maxScore) * 100;
@@ -75,6 +75,33 @@ const CreditScore = () => {
       year: "numeric",
     });
   };
+
+  // Group finance products by type
+  const groupedProducts = financeProducts.reduce((acc, product) => {
+    if (product.productDetails) {
+      const type = product.productDetails.type;
+      if (!acc[type]) {
+        acc[type] = [];
+      }
+      acc[type].push(product);
+    }
+    return acc;
+  }, {} as Record<string, Transaction[]>);
+
+  if (!creditScore) {
+    return (
+      <div className="flex justify-center items-center min-h-[200px]">
+        <div className="animate-pulse space-y-4">
+          <div className="h-10 bg-slate-200 rounded w-3/4 mx-auto"></div>
+          <div className="h-32 bg-slate-200 rounded"></div>
+          <div className="space-y-2">
+            <div className="h-4 bg-slate-200 rounded"></div>
+            <div className="h-4 bg-slate-200 rounded w-5/6"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -150,7 +177,6 @@ const CreditScore = () => {
             </div>
           </div>
 
-          {/* Loan information section */}
           {creditScore.loanInformation && (
             <div className="mb-6">
               <div className="border rounded-lg p-4 bg-blue-50">
@@ -209,6 +235,64 @@ const CreditScore = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {Object.keys(groupedProducts).length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              Your Financial Products
+            </CardTitle>
+            <CardDescription>
+              Active loans and financial services
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Object.entries(groupedProducts).map(([type, products]) => (
+              <div key={type} className="space-y-2">
+                <h3 className="text-sm font-medium capitalize">
+                  {type.replace(/-/g, ' ')}
+                </h3>
+                {products.map((product) => (
+                  <div 
+                    key={product.id} 
+                    className="border rounded-lg p-3 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-medium">
+                          {product.productDetails?.name || product.description}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Applied on {formatDate(new Date(product.date))}
+                        </div>
+                        {product.productDetails?.interestRate && (
+                          <div className="text-xs mt-1 text-green-600">
+                            Interest: {product.productDetails.interestRate}
+                          </div>
+                        )}
+                        {product.productDetails?.term && (
+                          <div className="text-xs text-blue-600">
+                            Term: {product.productDetails.term}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold">{new Intl.NumberFormat('en-IN', {
+                          style: 'currency',
+                          currency: 'INR',
+                          maximumFractionDigits: 0
+                        }).format(product.amount)}</div>
+                        <Badge className="mt-1">{product.status}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
       
       <Card>
         <CardHeader className="pb-2">
