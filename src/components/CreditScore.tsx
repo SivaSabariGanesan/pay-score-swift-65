@@ -53,6 +53,21 @@ const CreditScore = () => {
     };
   }, []);
 
+  if (!creditScore) {
+    return (
+      <div className="flex justify-center items-center min-h-[200px]">
+        <div className="animate-pulse space-y-4">
+          <div className="h-10 bg-slate-200 rounded w-3/4 mx-auto"></div>
+          <div className="h-32 bg-slate-200 rounded"></div>
+          <div className="space-y-2">
+            <div className="h-4 bg-slate-200 rounded"></div>
+            <div className="h-4 bg-slate-200 rounded w-5/6"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Calculate score percentage for progress bar
   const scorePercentage = (creditScore.score / creditScore.maxScore) * 100;
   
@@ -87,21 +102,6 @@ const CreditScore = () => {
     }
     return acc;
   }, {} as Record<string, Transaction[]>);
-
-  if (!creditScore) {
-    return (
-      <div className="flex justify-center items-center min-h-[200px]">
-        <div className="animate-pulse space-y-4">
-          <div className="h-10 bg-slate-200 rounded w-3/4 mx-auto"></div>
-          <div className="h-32 bg-slate-200 rounded"></div>
-          <div className="space-y-2">
-            <div className="h-4 bg-slate-200 rounded"></div>
-            <div className="h-4 bg-slate-200 rounded w-5/6"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

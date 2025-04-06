@@ -12,7 +12,7 @@ import {
   TableRow,
   TableCell 
 } from "@/components/ui/table";
-import { getTransactions } from "../utils/creditScoreUtils";
+import { getTransactions, initializeCreditScore } from "../utils/creditScoreUtils";
 import { Transaction } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,30 +20,44 @@ import { Separator } from "@/components/ui/separator";
 
 const CreditScorePage = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState("history");
   const [financeProducts, setFinanceProducts] = useState<Transaction[]>([]);
 
   useEffect(() => {
-    const savedTransactions = getTransactions();
-    setTransactions(savedTransactions);
+    // Initialize credit score data if needed
+    initializeCreditScore();
     
-    // Filter out finance product transactions
-    const products = savedTransactions.filter(
-      t => t.productDetails || t.description.toLowerCase().includes("loan")
-    );
-    setFinanceProducts(products);
+    try {
+      const savedTransactions = getTransactions();
+      setTransactions(savedTransactions);
+      
+      // Filter out finance product transactions
+      const products = savedTransactions.filter(
+        t => t.productDetails || t.description.toLowerCase().includes("loan")
+      );
+      setFinanceProducts(products);
+    } catch (error) {
+      console.error("Error loading transaction data:", error);
+    } finally {
+      setIsLoading(false);
+    }
     
     // Listen for transaction updates
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "transactions") {
-        const updatedTransactions = getTransactions();
-        setTransactions(updatedTransactions);
-        
-        const products = updatedTransactions.filter(
-          t => t.productDetails || t.description.toLowerCase().includes("loan")
-        );
-        setFinanceProducts(products);
+        try {
+          const updatedTransactions = getTransactions();
+          setTransactions(updatedTransactions);
+          
+          const products = updatedTransactions.filter(
+            t => t.productDetails || t.description.toLowerCase().includes("loan")
+          );
+          setFinanceProducts(products);
+        } catch (error) {
+          console.error("Error processing storage change:", error);
+        }
       }
     };
     
@@ -114,6 +128,27 @@ const CreditScorePage = () => {
       outstandingAmount: Math.max(0, totalDisbursed - totalRepaid)
     };
   }, [transactions]);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-6 min-h-screen bg-gradient-to-b from-blue-50 to-white">
+        <header className="mb-6">
+          <div className="flex items-center mb-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-bold ml-2">Credit Score</h1>
+          </div>
+        </header>
+        
+        <div className="animate-pulse space-y-6">
+          <div className="bg-white rounded-xl shadow-md p-5 h-96"></div>
+          <div className="h-10 bg-slate-200 rounded"></div>
+          <div className="h-64 bg-slate-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto px-4 py-6 min-h-screen bg-gradient-to-b from-blue-50 to-white">

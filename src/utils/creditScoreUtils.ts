@@ -1,4 +1,3 @@
-
 import { CreditScoreData, Transaction } from "@/types";
 
 // --- Initial Credit Score ---
@@ -27,21 +26,39 @@ const initialCreditScore: CreditScoreData = {
   }
 };
 
+// Initialize credit score in localStorage if not already set
+const initializeLocalStorage = () => {
+  if (!localStorage.getItem("creditScore")) {
+    localStorage.setItem("creditScore", JSON.stringify(initialCreditScore));
+  }
+  if (!localStorage.getItem("transactions")) {
+    localStorage.setItem("transactions", JSON.stringify([]));
+  }
+};
+
 // --- Get Credit Score ---
 export const getCreditScore = (): CreditScoreData => {
+  // Initialize localStorage if needed
+  initializeLocalStorage();
+  
   const savedData = localStorage.getItem("creditScore");
   if (savedData) {
-    const parsed = JSON.parse(savedData);
-    parsed.lastUpdated = new Date(parsed.lastUpdated);
-    // Ensure loanInformation exists (for backward compatibility)
-    if (!parsed.loanInformation) {
-      parsed.loanInformation = {
-        activeLoans: 0,
-        totalLoanAmount: 0,
-        onTimeLoanPayments: 0
-      };
+    try {
+      const parsed = JSON.parse(savedData);
+      parsed.lastUpdated = new Date(parsed.lastUpdated);
+      // Ensure loanInformation exists (for backward compatibility)
+      if (!parsed.loanInformation) {
+        parsed.loanInformation = {
+          activeLoans: 0,
+          totalLoanAmount: 0,
+          onTimeLoanPayments: 0
+        };
+      }
+      return parsed;
+    } catch (error) {
+      console.error("Error parsing credit score data:", error);
+      return initialCreditScore;
     }
-    return parsed;
   }
   return initialCreditScore;
 };
@@ -263,6 +280,9 @@ export const initializeCreditScore = (): void => {
   if (!localStorage.getItem("creditScore")) {
     saveCreditScore(initialCreditScore);
   }
+  if (!localStorage.getItem("transactions")) {
+    localStorage.setItem("transactions", JSON.stringify([]));
+  }
 };
 
 // Estimate score impact for different transaction types
@@ -290,4 +310,3 @@ export const estimateScoreImpact = (transactionType: string, amount: number): { 
       };
   }
 };
-
