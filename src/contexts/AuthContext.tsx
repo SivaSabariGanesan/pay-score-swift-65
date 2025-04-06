@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   // Update the client ID and configure additional parameters like redirects
-  const GOOGLE_CLIENT_ID = '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com';
+  const GOOGLE_CLIENT_ID = '121411899077-38p480klc54p8ia84lqm9v2r3c409j7l.apps.googleusercontent.com';
   
   // Define the redirect URI based on the environment
   const getRedirectUri = () => {
