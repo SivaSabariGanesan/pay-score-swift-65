@@ -1,4 +1,3 @@
-
 // Metamask utility functions for Web3 integration
 
 import { PaymentRequest } from "@/types";
@@ -43,7 +42,7 @@ export const connectMetamask = async () => {
   }
 };
 
-export const getNetworkName = (chainId: string): string => {
+export const getNetworkName = (chainId: string | number): string => {
   // Normalize chainId to hex in case it's a number
   const hexChainId = typeof chainId === 'number' ? `0x${chainId.toString(16)}` : chainId;
   
