@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { PaymentRequest } from "@/types";
 import { processPayment } from "@/utils/razorpayUtils";
 import { processMetaMaskPayment } from "@/utils/metamaskUtils";
+import { processPolygonTransaction } from "@/utils/polygonUtils";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PaymentModalProps {
   paymentDetails: PaymentRequest;
@@ -13,7 +15,8 @@ interface PaymentModalProps {
 
 const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState<"razorpay" | "metamask" | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<"razorpay" | "metamask" | "polygon" | null>(null);
+  const { connectPolygonWallet } = useAuth();
   
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -42,6 +45,11 @@ const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
       } else if (selectedMethod === "metamask") {
         // Process payment using MetaMask
         success = await processMetaMaskPayment(paymentDetails);
+      } else if (selectedMethod === "polygon") {
+        // Connect wallet first
+        await connectPolygonWallet();
+        // Process payment using Polygon
+        success = await processPolygonTransaction(paymentDetails);
       }
       
       if (success) {
@@ -90,7 +98,7 @@ const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
 
         <div className="space-y-2">
           <p className="text-sm font-medium">Select Payment Method</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <Button 
               variant={selectedMethod === "razorpay" ? "default" : "outline"}
               className="flex flex-col h-auto py-3 relative"
@@ -115,6 +123,19 @@ const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
                 className="h-6 w-6 mb-1" 
               />
               <span className="text-xs">MetaMask</span>
+            </Button>
+            
+            <Button 
+              variant={selectedMethod === "polygon" ? "default" : "outline"}
+              className="flex flex-col h-auto py-3 relative"
+              onClick={() => setSelectedMethod("polygon")}
+            >
+              <img 
+                src="https://cryptologos.cc/logos/polygon-matic-logo.png" 
+                alt="Polygon" 
+                className="h-6 w-6 mb-1" 
+              />
+              <span className="text-xs">Polygon</span>
             </Button>
           </div>
         </div>

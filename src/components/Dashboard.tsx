@@ -3,22 +3,26 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { QrCode, CreditCard, BarChart, Clock, Home, ArrowUp, Send } from "lucide-react";
+import { QrCode, CreditCard, BarChart, Clock, Home, ArrowUp, Send, Wallet, LogOut } from "lucide-react";
 import TransactionHistory from "./TransactionHistory";
 import { initializeUserData } from "@/utils/razorpayUtils";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const Dashboard = () => {
   const [balance, setBalance] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<string>("overview");
   const navigate = useNavigate();
+  const { isAuthenticated, user, logout, connectPolygonWallet } = useAuth();
 
   useEffect(() => {
     // Initialize mock data
     initializeUserData();
     
     // Load user balance
-    const userBalance = parseFloat(localStorage.getItem("userBalance") || "0");
+    const userBalance = user?.balance || parseFloat(localStorage.getItem("userBalance") || "0");
     setBalance(userBalance);
     
     // Listen for balance changes
@@ -39,7 +43,7 @@ const Dashboard = () => {
       window.removeEventListener("storage", balanceListener);
       document.body.removeChild(script);
     };
-  }, []);
+  }, [user]);
 
   const handleTabChange = (value: string) => {
     if (value === "history") {
@@ -52,14 +56,71 @@ const Dashboard = () => {
     setActiveTab(value);
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+
+  const handleConnectWallet = async () => {
+    try {
+      await connectPolygonWallet();
+    } catch (error) {
+      console.error('Error connecting wallet:', error);
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto px-4 py-6 min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <header className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-primary">TransPay</h1>
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-primary font-semibold">JS</span>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-10 w-10 rounded-full p-0">
+                <Avatar>
+                  <AvatarImage src={user?.avatar} alt={user?.name || "User"} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {user?.name ? getInitials(user.name) : "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <div className="flex items-center justify-start p-2">
+                <div className="ml-2">
+                  <p className="text-sm font-medium">{user?.name || "Guest User"}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              {user?.walletAddress ? (
+                <DropdownMenuItem className="flex items-center">
+                  <Wallet className="mr-2 h-4 w-4" />
+                  <span className="text-xs">{`${user.walletAddress.substring(0, 6)}...${user.walletAddress.substring(38)}`}</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={handleConnectWallet}>
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Connect Wallet
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              {isAuthenticated ? (
+                <DropdownMenuItem onSelect={logout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => navigate("/login")}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Login
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -92,6 +153,27 @@ const Dashboard = () => {
                 </span>
                 Just now
               </p>
+              {user?.walletAddress ? (
+                <div className="mt-2 bg-white/10 rounded-md p-2 text-xs text-white/90">
+                  <div className="flex items-center">
+                    <img 
+                      src="https://cryptologos.cc/logos/polygon-matic-logo.png" 
+                      alt="Polygon" 
+                      className="h-4 w-4 mr-1" 
+                    />
+                    <span>Polygon Wallet Connected</span>
+                  </div>
+                </div>
+              ) : (
+                <Button 
+                  variant="ghost" 
+                  className="mt-2 text-white bg-white/10 hover:bg-white/20 w-full text-xs h-8" 
+                  onClick={handleConnectWallet}
+                >
+                  <Wallet className="h-3 w-3 mr-1" />
+                  Connect Polygon Wallet
+                </Button>
+              )}
             </CardContent>
           </Card>
 

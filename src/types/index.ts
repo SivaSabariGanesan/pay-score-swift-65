@@ -16,6 +16,7 @@ export interface Transaction {
     term?: string;
     provider?: string;
   };
+  network?: 'polygon' | 'ethereum';
 }
 
 export interface CreditScoreData {
@@ -47,6 +48,9 @@ export interface UserProfile {
   balance: number;
   creditScore: CreditScoreData;
   recentTransactions: Transaction[];
+  isAuthenticated?: boolean;
+  avatar?: string;
+  walletAddress?: string;
 }
 
 export interface PaymentRequest {
@@ -73,6 +77,13 @@ export interface RazorpayOptions {
   };
 }
 
+export interface AuthState {
+  isAuthenticated: boolean;
+  user: UserProfile | null;
+  loading: boolean;
+  error: string | null;
+}
+
 declare global {
   interface Window {
     ethereum?: {
@@ -81,6 +92,15 @@ declare global {
         method: string;
         params?: unknown[] | object;
       }) => Promise<unknown>;
+    };
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, options: any) => void;
+          prompt: () => void;
+        };
+      };
     };
   }
 }
