@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Shield, LogIn } from "lucide-react";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -42,11 +43,16 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md border-none shadow-lg">
         <CardHeader className="text-center">
+          <div className="flex justify-center mb-2">
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Shield className="h-6 w-6 text-primary" />
+            </div>
+          </div>
           <CardTitle className="text-2xl font-bold">Welcome to TransPay</CardTitle>
           <CardDescription>
-            Log in to access your account
+            Your secure decentralized payment platform
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -65,14 +71,9 @@ const LoginPage = () => {
           
           <Button 
             className="w-full" 
-            variant="outline"
             onClick={handleLoginWithGoogle}
           >
-            <img 
-              src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" 
-              alt="Google" 
-              className="w-5 h-5 mr-2" 
-            />
+            <LogIn className="w-5 h-5 mr-2" />
             Sign in with Google
           </Button>
           

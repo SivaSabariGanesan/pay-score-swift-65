@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserProfile } from '@/types';
 import { toast } from 'sonner';
-import { processPolygonTransaction } from '@/utils/polygonUtils';
 import { v4 as uuidv4 } from 'uuid';
 
 interface AuthContextType {
@@ -11,7 +10,7 @@ interface AuthContextType {
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
-  connectPolygonWallet: () => Promise<string>;
+  connectWallet: () => Promise<string>;
 }
 
 const DEFAULT_USER: UserProfile = {
@@ -49,7 +48,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   loginWithGoogle: async () => {},
   logout: () => {},
-  connectPolygonWallet: async () => '',
+  connectWallet: async () => '',
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -87,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initialize Google Auth
     if (window.google) {
       window.google.accounts.id.initialize({
-        client_id: '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com', // Replace with your actual Google client ID
+        client_id: '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com',
         callback: handleGoogleResponse,
       });
     } else {
@@ -100,7 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       script.onload = () => {
         if (window.google) {
           window.google.accounts.id.initialize({
-            client_id: '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com', // Replace with your actual Google client ID
+            client_id: '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com',
             callback: handleGoogleResponse,
           });
         }
@@ -162,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.success('Successfully logged out');
   };
 
-  const connectPolygonWallet = async (): Promise<string> => {
+  const connectWallet = async (): Promise<string> => {
     try {
       // Check if MetaMask is installed
       if (!window.ethereum) {
@@ -178,47 +177,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('No accounts found! Please connect to MetaMask.');
       }
 
-      // Get network ID to verify it's Polygon (Mumbai testnet or Mainnet)
+      // Get current network
       const chainId = await window.ethereum.request({
         method: 'eth_chainId',
       }) as string;
 
-      // Polygon Mumbai Testnet: 0x13881, Polygon Mainnet: 0x89
-      if (chainId !== '0x13881' && chainId !== '0x89') {
-        try {
-          // Try to switch to Polygon Mumbai testnet
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0x13881' }],
-          });
-        } catch (switchError: any) {
-          // If the network is not added to MetaMask, add it
-          if (switchError.code === 4902) {
-            await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [
-                {
-                  chainId: '0x13881',
-                  chainName: 'Polygon Mumbai Testnet',
-                  nativeCurrency: {
-                    name: 'MATIC',
-                    symbol: 'MATIC',
-                    decimals: 18,
-                  },
-                  rpcUrls: ['https://rpc-mumbai.maticvigil.com'],
-                  blockExplorerUrls: ['https://mumbai.polygonscan.com/'],
-                },
-              ],
-            });
-          }
-        }
-      }
+      console.log(`Connected to chain ID: ${chainId}`);
 
       // Update user with wallet address
       if (state.user) {
         const updatedUser = {
           ...state.user,
           walletAddress: accounts[0],
+          chainId: chainId,
         };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setState({
@@ -249,7 +220,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading: state.loading,
         loginWithGoogle,
         logout,
-        connectPolygonWallet,
+        connectWallet,
       }}
     >
       {children}

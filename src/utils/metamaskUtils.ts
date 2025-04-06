@@ -1,14 +1,15 @@
 
 // metamaskUtils.ts
-// Using the type definition from types/index.ts instead of redefining it here
-import { PaymentRequest } from "@/types";
+import { PaymentRequest, Transaction } from "@/types";
+import { v4 as uuidv4 } from "uuid";
+import { toast } from "sonner";
+import { addTransaction } from "@/utils/razorpayUtils";
 
-// Remove the duplicate declaration as it's already in types/index.ts
-// declare global {
-//   interface Window {
-//     ethereum?: any;
-//   }
-// }
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 
 const detectEthereum = () => {
   return Boolean(window.ethereum);
@@ -55,20 +56,36 @@ const getChainId = async (): Promise<string> => {
   }
 };
 
+const getNetworkName = (chainId: string): string => {
+  const networks: Record<string, string> = {
+    '0x1': 'Ethereum Mainnet',
+    '0x5': 'Goerli Testnet',
+    '0x89': 'Polygon Mainnet',
+    '0x13881': 'Polygon Mumbai',
+    '0xa86a': 'Avalanche Mainnet',
+    '0xa869': 'Avalanche Fuji',
+    '0x38': 'BNB Smart Chain',
+    '0x61': 'BNB Testnet',
+  };
+  
+  return networks[chainId] || `Chain ID: ${chainId}`;
+};
+
 export const sendTransaction = async (
   to: string,
-  amountInEther: number
+  amount: number
 ): Promise<string> => {
   try {
     const accounts = await requestAccount();
     const fromAddress = accounts[0];
+    const chainId = await getChainId();
 
     if (!fromAddress) {
       throw new Error("No account found. Please connect to MetaMask.");
     }
 
     // Convert amount to hex (wei)
-    const amountInWei = (amountInEther * 1e18).toString(16);
+    const amountInWei = (amount * 1e18).toString(16);
     
     // Send transaction
     const txHash = await window.ethereum.request({
@@ -90,14 +107,16 @@ export const sendTransaction = async (
   }
 };
 
-export const connectMetamask = async (): Promise<{ account: string; chainId: string }> => {
+export const connectMetamask = async (): Promise<{ account: string; chainId: string; networkName: string }> => {
   try {
     const accounts = await requestAccount();
     const chainId = await getChainId();
+    const networkName = getNetworkName(chainId);
 
     return {
       account: accounts[0],
       chainId,
+      networkName
     };
   } catch (error) {
     console.error("Error connecting to MetaMask:", error);
@@ -105,21 +124,40 @@ export const connectMetamask = async (): Promise<{ account: string; chainId: str
   }
 };
 
-// Add the processMetaMaskPayment function
+// Process payments using MetaMask, now network-agnostic
 export const processMetaMaskPayment = async (paymentDetails: PaymentRequest): Promise<boolean> => {
   try {
-    // Convert INR to ETH (this is a simplified conversion)
-    // In a real app, you would use an exchange rate API
-    const estimatedEthAmount = paymentDetails.amount / 200000; // Example rate: 1 ETH = 200,000 INR
+    const accounts = await requestAccount();
+    const chainId = await getChainId();
+    const networkName = getNetworkName(chainId);
     
     // For destination address, we're using a dummy address for the demo
-    // In a real app, you would use the actual recipient's Ethereum address
     const recipientAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"; // Example address
     
-    // Send the transaction
-    const txHash = await sendTransaction(recipientAddress, estimatedEthAmount);
+    // Convert INR to crypto (this is a simplified conversion)
+    // In a real app, you would use an exchange rate API
+    const cryptoAmount = paymentDetails.amount / 200000; // Example rate
     
-    console.log("MetaMask transaction successful:", txHash);
+    // Send the transaction
+    const txHash = await sendTransaction(recipientAddress, cryptoAmount);
+    
+    console.log(`${networkName} transaction successful:`, txHash);
+    
+    // Create a transaction record
+    const transaction: Transaction = {
+      id: uuidv4(),
+      type: "debit",
+      amount: paymentDetails.amount,
+      description: paymentDetails.description,
+      to: paymentDetails.to,
+      date: new Date(),
+      status: "completed",
+      txHash,
+      network: networkName.toLowerCase().split(' ')[0]
+    };
+    
+    // Add transaction to history
+    addTransaction(transaction);
     
     // Return true to indicate success
     return true;
@@ -134,4 +172,5 @@ export default {
   connectMetamask,
   sendTransaction,
   processMetaMaskPayment,
+  getNetworkName,
 };

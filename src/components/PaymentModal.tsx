@@ -7,6 +7,7 @@ import { processMetaMaskPayment } from "@/utils/metamaskUtils";
 import { processPolygonTransaction } from "@/utils/polygonUtils";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { connectMetamask } from "@/utils/metamaskUtils";
 
 interface PaymentModalProps {
   paymentDetails: PaymentRequest;
@@ -16,7 +17,7 @@ interface PaymentModalProps {
 const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<"razorpay" | "metamask" | "polygon" | null>(null);
-  const { connectPolygonWallet } = useAuth();
+  const { user, connectWallet } = useAuth();
   
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -43,11 +44,15 @@ const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
         // Process the payment using Razorpay
         success = await processPayment(paymentDetails);
       } else if (selectedMethod === "metamask") {
-        // Process payment using MetaMask
+        // Connect wallet first if not connected
+        if (!user?.walletAddress) {
+          await connectWallet();
+        }
+        // Process payment using current wallet network
         success = await processMetaMaskPayment(paymentDetails);
       } else if (selectedMethod === "polygon") {
         // Connect wallet first
-        await connectPolygonWallet();
+        await connectWallet();
         // Process payment using Polygon
         success = await processPolygonTransaction(paymentDetails);
       }
@@ -65,6 +70,22 @@ const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const getWalletInfo = async () => {
+    try {
+      const { account, networkName } = await connectMetamask();
+      
+      return (
+        <div className="mt-2 text-xs">
+          <p>Connected: {account.substring(0, 6)}...{account.substring(38)}</p>
+          <p>Network: {networkName}</p>
+        </div>
+      );
+    } catch (error) {
+      console.error("Failed to get wallet info:", error);
+      return null;
     }
   };
 
@@ -122,7 +143,7 @@ const PaymentModal = ({ paymentDetails, onClose }: PaymentModalProps) => {
                 alt="MetaMask" 
                 className="h-6 w-6 mb-1" 
               />
-              <span className="text-xs">MetaMask</span>
+              <span className="text-xs">Current Network</span>
             </Button>
             
             <Button 

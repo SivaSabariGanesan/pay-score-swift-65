@@ -3,19 +3,22 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { QrCode, CreditCard, BarChart, Clock, Home, ArrowUp, Send, Wallet, LogOut } from "lucide-react";
+import { QrCode, CreditCard, BarChart, Clock, Home, Send, Wallet, LogOut, Shield, ChevronsUpDown } from "lucide-react";
 import TransactionHistory from "./TransactionHistory";
 import { initializeUserData } from "@/utils/razorpayUtils";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { connectMetamask, getNetworkName } from "@/utils/metamaskUtils";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const [balance, setBalance] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<string>("overview");
+  const [networkName, setNetworkName] = useState<string>("");
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout, connectPolygonWallet } = useAuth();
+  const { isAuthenticated, user, logout, connectWallet } = useAuth();
 
   useEffect(() => {
     // Initialize mock data
@@ -24,6 +27,16 @@ const Dashboard = () => {
     // Load user balance
     const userBalance = user?.balance || parseFloat(localStorage.getItem("userBalance") || "0");
     setBalance(userBalance);
+    
+    // Set network name if available
+    if (user?.chainId) {
+      try {
+        const network = getNetworkName(user.chainId);
+        setNetworkName(network);
+      } catch (error) {
+        console.error("Error getting network name:", error);
+      }
+    }
     
     // Listen for balance changes
     const balanceListener = () => {
@@ -34,14 +47,42 @@ const Dashboard = () => {
     window.addEventListener("storage", balanceListener);
     
     // Add Razorpay script
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    document.body.appendChild(script);
+    if (!(window as any).Razorpay) {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      document.body.appendChild(script);
+      
+      script.onload = () => {
+        console.log("Razorpay script loaded successfully");
+      };
+      
+      script.onerror = () => {
+        console.error("Failed to load Razorpay script");
+      };
+    }
+    
+    // Listen for chain changes
+    if (window.ethereum) {
+      window.ethereum.on('chainChanged', (chainId: string) => {
+        if (user?.walletAddress) {
+          const network = getNetworkName(chainId);
+          setNetworkName(network);
+          
+          // Update user with new chain ID
+          const updatedUser = {
+            ...user,
+            chainId
+          };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          
+          toast.info(`Network changed to ${network}`);
+        }
+      });
+    }
     
     return () => {
       window.removeEventListener("storage", balanceListener);
-      document.body.removeChild(script);
     };
   }, [user]);
 
@@ -66,7 +107,7 @@ const Dashboard = () => {
 
   const handleConnectWallet = async () => {
     try {
-      await connectPolygonWallet();
+      await connectWallet();
     } catch (error) {
       console.error('Error connecting wallet:', error);
     }
@@ -76,7 +117,9 @@ const Dashboard = () => {
     <div className="max-w-md mx-auto px-4 py-6 min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <header className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-primary">TransPay</h1>
+          <h1 className="text-2xl font-bold text-primary flex items-center">
+            <Shield className="h-5 w-5 mr-2" /> TransPay
+          </h1>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-10 w-10 rounded-full p-0">
@@ -88,7 +131,7 @@ const Dashboard = () => {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-56">
               <div className="flex items-center justify-start p-2">
                 <div className="ml-2">
                   <p className="text-sm font-medium">{user?.name || "Guest User"}</p>
@@ -97,12 +140,25 @@ const Dashboard = () => {
               </div>
               <DropdownMenuSeparator />
               {user?.walletAddress ? (
-                <DropdownMenuItem className="flex items-center">
-                  <Wallet className="mr-2 h-4 w-4" />
-                  <span className="text-xs">{`${user.walletAddress.substring(0, 6)}...${user.walletAddress.substring(38)}`}</span>
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Wallet className="mr-2 h-4 w-4" />
+                      <span className="text-xs font-medium">{`${user.walletAddress.substring(0, 6)}...${user.walletAddress.substring(38)}`}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-4 w-4 ml-2" onClick={handleConnectWallet}>
+                      <ChevronsUpDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuItem>
+                  {networkName && (
+                    <DropdownMenuItem className="flex items-center">
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span className="text-xs">{networkName}</span>
+                    </DropdownMenuItem>
+                  )}
+                </>
               ) : (
-                <DropdownMenuItem onSelect={handleConnectWallet}>
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleConnectWallet(); }}>
                   <Wallet className="mr-2 h-4 w-4" />
                   Connect Wallet
                 </DropdownMenuItem>
@@ -141,7 +197,7 @@ const Dashboard = () => {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <Card className="overflow-hidden border-none shadow-lg bg-gradient-to-r from-blue-500 to-primary">
+          <Card className="overflow-hidden border-none shadow-lg bg-gradient-to-r from-blue-600 to-blue-400">
             <CardHeader className="pb-2">
               <CardTitle className="text-white/90 text-lg font-medium">Available Balance</CardTitle>
             </CardHeader>
@@ -155,13 +211,14 @@ const Dashboard = () => {
               </p>
               {user?.walletAddress ? (
                 <div className="mt-2 bg-white/10 rounded-md p-2 text-xs text-white/90">
-                  <div className="flex items-center">
-                    <img 
-                      src="https://cryptologos.cc/logos/polygon-matic-logo.png" 
-                      alt="Polygon" 
-                      className="h-4 w-4 mr-1" 
-                    />
-                    <span>Polygon Wallet Connected</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Wallet className="h-4 w-4 mr-1 text-white/80" />
+                      <span>Wallet Connected</span>
+                    </div>
+                    <span className="bg-white/20 px-2 py-0.5 rounded-full">
+                      {networkName || "Unknown Network"}
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -171,7 +228,7 @@ const Dashboard = () => {
                   onClick={handleConnectWallet}
                 >
                   <Wallet className="h-3 w-3 mr-1" />
-                  Connect Polygon Wallet
+                  Connect Wallet
                 </Button>
               )}
             </CardContent>
