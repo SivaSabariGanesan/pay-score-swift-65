@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, BarChart, CreditCard, Heart, PiggyBank } from "lucide-react";
 import { Transaction } from "@/types";
 import { v4 as uuidv4 } from "uuid";
-import { updateCreditScoreWithTransaction } from "@/utils/creditScoreUtils";
+import { updateCreditScoreFromTransaction } from "@/utils/creditScoreUtils";
 import { toast } from "sonner";
 
 const FinancePage = () => {
@@ -35,7 +35,7 @@ const FinancePage = () => {
             provider: "Pay Swift Bank"
           }
         };
-        updateCreditScoreWithTransaction(creditCardTransaction);
+        updateCreditScoreFromTransaction(creditCardTransaction);
         toast.success("Credit card application submitted", {
           description: "Your application is under review. We'll notify you once it's approved."
         });
@@ -59,7 +59,7 @@ const FinancePage = () => {
             provider: "Investment Partners"
           }
         };
-        updateCreditScoreWithTransaction(investmentTransaction);
+        updateCreditScoreFromTransaction(investmentTransaction);
         toast.success("Investment successful", {
           description: "Your investment in Growth Plus Mutual Fund has been processed."
         });
@@ -84,7 +84,7 @@ const FinancePage = () => {
             provider: "InsureCo"
           }
         };
-        updateCreditScoreWithTransaction(insuranceTransaction);
+        updateCreditScoreFromTransaction(insuranceTransaction);
         toast.success("Insurance plan activated", {
           description: "Your health insurance plan is now active."
         });

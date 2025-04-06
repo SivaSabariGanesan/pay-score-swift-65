@@ -9,11 +9,13 @@ export interface Transaction {
   status: "pending" | "completed" | "failed";
   date: Date;
   paymentId?: string;
+  category?: string;
   productDetails?: {
     type: string;
     name: string;
     interestRate?: string;
     term?: string;
+    provider?: string;
   };
 }
 

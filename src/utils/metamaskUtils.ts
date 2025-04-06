@@ -99,12 +99,12 @@ export const processMetaMaskPayment = async (paymentDetails: PaymentRequest): Pr
     // Add transaction to history
     const transaction = {
       id: uuidv4(),
-      type: 'debit',
+      type: "debit" as const,
       amount: paymentDetails.amount,
       from: 'You (via MetaMask)',
       to: paymentDetails.to,
       description: paymentDetails.description,
-      status: 'completed',
+      status: "completed" as const,
       date: new Date(),
       paymentId: txHash,
     };

@@ -118,12 +118,12 @@ export const processPolygonTransaction = async (paymentDetails: PaymentRequest):
     // Add transaction to history
     const transaction = {
       id: uuidv4(),
-      type: "debit",
+      type: "debit" as const,
       amount: paymentDetails.amount,
       from: "You (via Polygon)",
       to: paymentDetails.to,
       description: paymentDetails.description,
-      status: "completed",
+      status: "completed" as const,
       date: new Date(),
       paymentId: txHash,
     };

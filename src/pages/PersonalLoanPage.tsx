@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle2, DollarSign, Info } from "lucide-react";
 import { toast } from "sonner";
 import { Transaction } from "@/types";
 import { v4 as uuidv4 } from "uuid";
-import { updateCreditScoreWithTransaction } from "@/utils/creditScoreUtils";
+import { updateCreditScoreFromTransaction } from "@/utils/creditScoreUtils";
 
 const PersonalLoanPage = () => {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ const PersonalLoanPage = () => {
     };
     
     // Update credit score with the transaction
-    updateCreditScoreWithTransaction(transaction);
+    updateCreditScoreFromTransaction(transaction);
     
     // Update user balance
     const currentBalance = parseFloat(localStorage.getItem("userBalance") || "5000");
