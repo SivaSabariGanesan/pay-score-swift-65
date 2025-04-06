@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initialize Google Auth
     if (window.google) {
       window.google.accounts.id.initialize({
-        client_id: '188734641487-c78i5b9fh75o9ga0e10l48ueq1hdverf.apps.googleusercontent.com', // Replace with your actual Google client ID
+        client_id: '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com', // Replace with your actual Google client ID
         callback: handleGoogleResponse,
       });
     } else {
@@ -100,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       script.onload = () => {
         if (window.google) {
           window.google.accounts.id.initialize({
-            client_id: '188734641487-c78i5b9fh75o9ga0e10l48ueq1hdverf.apps.googleusercontent.com', // Replace with your actual Google client ID
+            client_id: '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com', // Replace with your actual Google client ID
             callback: handleGoogleResponse,
           });
         }
