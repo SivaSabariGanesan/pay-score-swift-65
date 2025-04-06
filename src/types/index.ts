@@ -1,22 +1,15 @@
-export interface Transaction {
+
+export interface UserProfile {
   id: string;
-  type: 'credit' | 'debit';
-  amount: number;
-  description: string;
-  to?: string;
-  from?: string;
-  date: Date;
-  status: 'completed' | 'pending' | 'failed';
-  txHash?: string; // For blockchain transactions
-  category?: string; // To categorize transactions (bill, loan, general, etc.)
-  productDetails?: {
-    type: 'personal-loan' | 'credit-card' | 'investment' | 'insurance' | 'other';
-    name: string;
-    interestRate?: string;
-    term?: string;
-    provider?: string;
-  };
-  network?: 'polygon' | 'ethereum';
+  name: string;
+  email: string;
+  phone?: string;
+  avatar?: string;
+  balance: number;
+  walletAddress?: string;
+  chainId?: string;
+  creditScore: CreditScoreData;
+  recentTransactions: Transaction[];
 }
 
 export interface CreditScoreData {
@@ -33,74 +26,45 @@ export interface CreditScoreData {
     positive: string[];
     negative: string[];
   };
-  loanInformation: {
+  loanInformation?: {
     activeLoans: number;
     totalLoanAmount: number;
     onTimeLoanPayments: number;
   };
 }
 
-export interface UserProfile {
+export interface Transaction {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
-  balance: number;
-  creditScore: CreditScoreData;
-  recentTransactions: Transaction[];
-  isAuthenticated?: boolean;
-  avatar?: string;
-  walletAddress?: string;
+  type: "credit" | "debit";
+  amount: number;
+  from: string;
+  to: string;
+  date: Date;
+  status: "pending" | "completed" | "failed";
+  description: string;
+  transactionId?: string;
+  transactionHash?: string;
+  productDetails?: {
+    type: string;
+    name: string;
+    interestRate?: string;
+    term?: string;
+  };
 }
 
 export interface PaymentRequest {
   amount: number;
   to: string;
-  description: string;
+  description?: string;
+  currency?: string;
+  metadata?: Record<string, any>;
 }
 
-export interface RazorpayOptions {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description: string;
-  order_id: string;
-  handler: (response: any) => void;
-  prefill: {
-    name: string;
-    email: string;
-    contact: string;
-  };
-  theme: {
-    color: string;
-  };
-}
-
-export interface AuthState {
-  isAuthenticated: boolean;
-  user: UserProfile | null;
-  loading: boolean;
-  error: string | null;
-}
-
+// Extend the global Window interface to include ethereum for TypeScript
 declare global {
   interface Window {
-    ethereum?: {
-      isMetaMask?: boolean;
-      request: (args: {
-        method: string;
-        params?: unknown[] | object;
-      }) => Promise<unknown>;
-    };
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: any) => void;
-          renderButton: (element: HTMLElement, options: any) => void;
-          prompt: () => void;
-        };
-      };
-    };
+    ethereum?: any;
+    google?: any;
+    Razorpay?: any;
   }
 }

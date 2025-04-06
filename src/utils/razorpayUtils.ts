@@ -1,178 +1,217 @@
-import { Http } from '@capacitor/http';
-import { PaymentRequest, RazorpayOptions, Transaction } from "@/types";
+
+import { Transaction, PaymentRequest } from "@/types";
+import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
-import { updateCreditScoreWithTransaction } from "./creditScoreUtils";
 
-const RAZORPAY_KEY_ID = "rzp_test_eDVMj23yL98Hvt";
-const BACKEND_URL = "https://pay-score-swift-1.onrender.com/create-order";
-
-// Get transactions from localStorage
-export const getTransactions = (): Transaction[] => {
-  const savedTransactions = localStorage.getItem("transactions");
-  return savedTransactions 
-    ? JSON.parse(savedTransactions, (key, value) => {
-        if (key === 'date' && value) return new Date(value);
-        return value;
-      }) 
-    : [];
-};
-
-// Save transactions to localStorage
-export const saveTransactions = (transactions: Transaction[]): void => {
-  localStorage.setItem("transactions", JSON.stringify(transactions));
-};
-
-// Add transaction and update credit score
-export const addTransaction = (transaction: Transaction): void => {
-  const transactions = getTransactions();
-  transactions.unshift(transaction);
-  saveTransactions(transactions);
-  updateCreditScoreWithTransaction(transaction);
-
-  toast.success(
-    transaction.type === "debit"
-      ? `Payment of ₹${transaction.amount} sent`
-      : `Received ₹${transaction.amount}`,
-    { description: transaction.description }
-  );
-};
-
-// Create Razorpay Order using Capacitor HTTP
-export const createOrderId = async (amount: number): Promise<string> => {
-  const response = await Http.request({
-    method: "POST",
-    url: BACKEND_URL,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    data: { amount },
-  });
-
-  if (!response || !response.data?.id) throw new Error("Failed to create order");
-  return response.data.id;
-};
-
-// Process Razorpay Payment
-export const processPayment = async (paymentRequest: PaymentRequest): Promise<boolean> => {
-  try {
-    if (!(window as any).Razorpay) throw new Error("Razorpay SDK not loaded");
-
-    const response = await Http.request({
-      method: "POST",
-      url: BACKEND_URL,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      data: { amount: paymentRequest.amount },
-    });
-
-    if (!response || !response.data?.id) throw new Error("Failed to create order");
-
-    const { id: orderId, amount } = response.data;
-
-    return new Promise((resolve, reject) => {
-      const options: RazorpayOptions = {
-        key: RAZORPAY_KEY_ID,
-        amount,
-        currency: "INR",
-        name: "Pay Swift",
-        description: paymentRequest.description,
-        order_id: orderId,
-        handler: function () {
-          const transaction: Transaction = {
-            id: uuidv4(),
-            type: "debit",
-            amount: paymentRequest.amount,
-            description: paymentRequest.description,
-            to: paymentRequest.to,
-            date: new Date(),
-            status: "completed",
-          };
-          addTransaction(transaction);
-          const currentBalance = parseFloat(localStorage.getItem("userBalance") || "5000");
-          localStorage.setItem("userBalance", (currentBalance - paymentRequest.amount).toFixed(2));
-          toast.success("Payment successful");
-          resolve(true);
-        },
-        prefill: {
-          name: "User Name",
-          email: "user@example.com",
-          contact: "9999999999",
-        },
-        theme: {
-          color: "#4285F4",
-        },
-      };
-
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
-
-      rzp.on("payment.failed", function (res: any) {
-        const transaction: Transaction = {
-          id: uuidv4(),
-          type: "debit",
-          amount: paymentRequest.amount,
-          description: paymentRequest.description,
-          to: paymentRequest.to,
-          date: new Date(),
-          status: "failed",
-        };
-
-        addTransaction(transaction);
-
-        toast.error("Payment failed", {
-          description: res.error?.description || "Please try again later",
-        });
-
-        reject(new Error("Payment failed"));
-      });
-    });
-  } catch (err) {
-    console.error("Payment processing error:", err);
-    toast.error("Payment error", {
-      description: err instanceof Error ? err.message : "Something went wrong",
-    });
-    return false;
-  }
-};
-
-// Initialize mock user data
-export const initializeUserData = (): void => {
-  if (!localStorage.getItem("userBalance")) {
-    localStorage.setItem("userBalance", "5000");
-  }
-
+// Helper function to initialize mock user data
+export const initializeUserData = () => {
+  // Initialize transactions if not present
   if (!localStorage.getItem("transactions")) {
-    const initialTransactions: Transaction[] = [
+    const mockTransactions = [
+      {
+        id: uuidv4(),
+        type: "credit",
+        amount: 2500,
+        from: "Salary",
+        to: "Your Account",
+        date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
+        status: "completed",
+        description: "Monthly Salary"
+      },
       {
         id: uuidv4(),
         type: "debit",
-        amount: 250,
-        description: "Grocery Shopping",
-        to: "SuperMart",
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        amount: 650,
+        from: "Your Account",
+        to: "Electricity Bill",
+        date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
         status: "completed",
+        description: "Monthly Bill Payment"
       },
       {
         id: uuidv4(),
         type: "credit",
-        amount: 1000,
-        description: "Refund",
-        from: "Online Store",
-        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        amount: 1200,
+        from: "Client Payment",
+        to: "Your Account",
+        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
         status: "completed",
+        description: "Freelance Work"
       },
       {
         id: uuidv4(),
         type: "debit",
-        amount: 150,
-        description: "Coffee Shop",
-        to: "Brew Co.",
-        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        amount: 800,
+        from: "Your Account",
+        to: "Grocery Store",
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
         status: "completed",
+        description: "Weekly Groceries"
       },
+      {
+        id: uuidv4(),
+        type: "debit",
+        amount: 120,
+        from: "Your Account",
+        to: "Coffee Shop",
+        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+        status: "completed",
+        description: "Coffee with Friends"
+      }
     ];
-    saveTransactions(initialTransactions);
+    localStorage.setItem("transactions", JSON.stringify(mockTransactions));
+  }
+  
+  // Initialize user balance if not present
+  if (!localStorage.getItem("userBalance")) {
+    localStorage.setItem("userBalance", "5000");
+  }
+};
+
+// Get all transactions
+export const getTransactions = (): Transaction[] => {
+  const transactions = localStorage.getItem("transactions");
+  return transactions ? JSON.parse(transactions) : [];
+};
+
+// Add a new transaction
+export const addTransaction = (transaction: Transaction) => {
+  const transactions = getTransactions();
+  transactions.unshift(transaction); // Add to beginning of array
+  localStorage.setItem("transactions", JSON.stringify(transactions));
+  
+  // Trigger storage event for other tabs/components
+  window.dispatchEvent(new Event("storage"));
+};
+
+// Update user balance
+export const updateUserBalance = (amount: number) => {
+  const currentBalance = parseFloat(localStorage.getItem("userBalance") || "0");
+  const newBalance = currentBalance + amount;
+  localStorage.setItem("userBalance", newBalance.toString());
+  
+  // Update user object if it exists
+  const userJson = localStorage.getItem("user");
+  if (userJson) {
+    try {
+      const user = JSON.parse(userJson);
+      user.balance = newBalance;
+      localStorage.setItem("user", JSON.stringify(user));
+    } catch (error) {
+      console.error("Error updating user balance:", error);
+    }
+  }
+  
+  // Trigger storage event for other tabs/components
+  window.dispatchEvent(new Event("storage"));
+};
+
+// Process payment with Razorpay
+export const processPayment = async (paymentDetails: PaymentRequest): Promise<boolean> => {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log("Processing payment with Razorpay", paymentDetails);
+      
+      if (!(window as any).Razorpay) {
+        console.error("Razorpay SDK not loaded");
+        
+        // Dynamically load Razorpay script
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        
+        script.onload = () => {
+          console.log("Razorpay script loaded successfully");
+          initializeRazorpay(paymentDetails, resolve, reject);
+        };
+        
+        script.onerror = () => {
+          console.error("Failed to load Razorpay script");
+          reject(new Error("Failed to load Razorpay SDK"));
+        };
+        
+        document.body.appendChild(script);
+      } else {
+        console.log("Razorpay SDK already loaded");
+        initializeRazorpay(paymentDetails, resolve, reject);
+      }
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      reject(error);
+    }
+  });
+};
+
+// Helper function to initialize Razorpay checkout
+const initializeRazorpay = (
+  paymentDetails: PaymentRequest,
+  resolve: (value: boolean) => void,
+  reject: (reason?: any) => void
+) => {
+  try {
+    const RazorpayCheckout = (window as any).Razorpay;
+    
+    if (!RazorpayCheckout) {
+      throw new Error("Razorpay SDK not available");
+    }
+    
+    const options = {
+      key: "rzp_test_QCsADCKZO5Qzs2", // Test key
+      amount: paymentDetails.amount * 100, // Amount in paise
+      currency: "INR",
+      name: "TransPay",
+      description: paymentDetails.description || "Payment",
+      image: "https://i.ibb.co/YDYS80K/shield.png",
+      handler: function (response: any) {
+        console.log("Payment successful", response);
+        
+        // Create transaction record
+        const transaction = {
+          id: uuidv4(),
+          type: "debit",
+          amount: paymentDetails.amount,
+          from: "You",
+          to: paymentDetails.to,
+          date: new Date(),
+          status: "completed",
+          description: paymentDetails.description || "Razorpay Payment",
+          transactionId: response.razorpay_payment_id
+        };
+        
+        // Add transaction to history
+        addTransaction(transaction);
+        
+        // Update user balance
+        updateUserBalance(-paymentDetails.amount);
+        
+        toast.success("Payment successful", {
+          description: `Payment ID: ${response.razorpay_payment_id}`
+        });
+        
+        resolve(true);
+      },
+      prefill: {
+        name: "TransPay User",
+        email: "user@example.com",
+        contact: "9999999999"
+      },
+      theme: {
+        color: "#3B82F6"
+      },
+      modal: {
+        ondismiss: function() {
+          console.log("Payment cancelled");
+          
+          toast.info("Payment cancelled");
+          resolve(false);
+        }
+      }
+    };
+    
+    const razorpay = new RazorpayCheckout(options);
+    razorpay.open();
+  } catch (error) {
+    console.error("Error initializing Razorpay:", error);
+    reject(error);
   }
 };

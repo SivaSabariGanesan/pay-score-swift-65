@@ -1,176 +1,204 @@
 
-// metamaskUtils.ts
-import { PaymentRequest, Transaction } from "@/types";
-import { v4 as uuidv4 } from "uuid";
+// Metamask utility functions for Web3 integration
+
+import { PaymentRequest } from "@/types";
 import { toast } from "sonner";
-import { addTransaction } from "@/utils/razorpayUtils";
+import { v4 as uuidv4 } from 'uuid';
+import { addTransaction, updateUserBalance } from "./razorpayUtils";
 
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
-
-const detectEthereum = () => {
-  return Boolean(window.ethereum);
-};
-
-const requestAccount = async (): Promise<string[]> => {
-  if (!detectEthereum()) {
-    throw new Error("Ethereum provider not detected. Please install MetaMask.");
-  }
-
+export const connectMetamask = async () => {
   try {
+    // Check if Ethereum provider exists
+    if (!window.ethereum) {
+      throw new Error("MetaMask not found. Please install the MetaMask browser extension.");
+    }
+
     // Request account access
     const accounts = await window.ethereum.request({
-      method: "eth_requestAccounts",
+      method: 'eth_requestAccounts'
     });
     
-    // Make sure we return an array of strings
-    if (Array.isArray(accounts)) {
-      return accounts as string[];
+    // If no accounts returned or access denied
+    if (!accounts || accounts.length === 0) {
+      throw new Error("No accounts found or access denied. Please connect to MetaMask.");
     }
+
+    const account = accounts[0];
     
-    throw new Error("Invalid response from MetaMask");
+    // Get network ID
+    const chainId = await window.ethereum.request({
+      method: 'eth_chainId'
+    });
+    
+    // Get network name based on chain ID
+    const networkName = getNetworkName(chainId);
+    
+    console.log(`Connected to MetaMask with account: ${account}`);
+    console.log(`Current network: ${networkName} (${chainId})`);
+    
+    return { account, chainId, networkName };
   } catch (error) {
     console.error("Error connecting to MetaMask:", error);
     throw error;
   }
 };
 
-const getChainId = async (): Promise<string> => {
-  if (!detectEthereum()) {
-    throw new Error("Ethereum provider not detected. Please install MetaMask.");
-  }
-
-  try {
-    const chainId = await window.ethereum.request({
-      method: "eth_chainId",
-    });
-    
-    // Ensure we return a string
-    return String(chainId);
-  } catch (error) {
-    console.error("Error getting chain ID:", error);
-    throw error;
-  }
-};
-
-const getNetworkName = (chainId: string): string => {
+export const getNetworkName = (chainId: string): string => {
+  // Normalize chainId to hex in case it's a number
+  const hexChainId = typeof chainId === 'number' ? `0x${chainId.toString(16)}` : chainId;
+  
+  // Mapping of chain IDs to network names
   const networks: Record<string, string> = {
     '0x1': 'Ethereum Mainnet',
     '0x5': 'Goerli Testnet',
+    '0xaa36a7': 'Sepolia Testnet',
     '0x89': 'Polygon Mainnet',
-    '0x13881': 'Polygon Mumbai',
-    '0xa86a': 'Avalanche Mainnet',
-    '0xa869': 'Avalanche Fuji',
+    '0x13881': 'Mumbai Testnet',
+    '0xa86a': 'Avalanche C-Chain',
+    '0xa': 'Optimism',
+    '0xa4b1': 'Arbitrum One',
     '0x38': 'BNB Smart Chain',
-    '0x61': 'BNB Testnet',
+    '0xfa': 'Fantom Opera',
+    '0x14a33': 'Base Goerli',
+    '0x2105': 'Base Mainnet'
   };
-  
-  return networks[chainId] || `Chain ID: ${chainId}`;
+
+  return networks[hexChainId] || `Unknown Network (${hexChainId})`;
 };
 
-export const sendTransaction = async (
-  to: string,
-  amount: number
-): Promise<string> => {
+export const switchNetwork = async (targetChainId: string) => {
   try {
-    const accounts = await requestAccount();
-    const fromAddress = accounts[0];
-    const chainId = await getChainId();
-
-    if (!fromAddress) {
-      throw new Error("No account found. Please connect to MetaMask.");
-    }
-
-    // Convert amount to hex (wei)
-    const amountInWei = (amount * 1e18).toString(16);
-    
-    // Send transaction
-    const txHash = await window.ethereum.request({
-      method: "eth_sendTransaction",
-      params: [
-        {
-          from: fromAddress,
-          to,
-          value: "0x" + amountInWei,
-          gas: "0x5208", // 21000 gas (simple ETH transfer)
-        },
-      ],
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: targetChainId }],
     });
-
-    return String(txHash); // Ensure we return a string
-  } catch (error) {
-    console.error("Error sending transaction:", error);
+    return true;
+  } catch (error: any) {
+    // This error code indicates that the chain has not been added to MetaMask
+    if (error.code === 4902) {
+      try {
+        // Add the network parameters
+        await addNetwork(targetChainId);
+        return true;
+      } catch (addError) {
+        console.error("Failed to add network:", addError);
+        throw addError;
+      }
+    }
+    console.error("Failed to switch network:", error);
     throw error;
   }
 };
 
-export const connectMetamask = async (): Promise<{ account: string; chainId: string; networkName: string }> => {
+export const addNetwork = async (chainId: string) => {
   try {
-    const accounts = await requestAccount();
-    const chainId = await getChainId();
-    const networkName = getNetworkName(chainId);
-
-    return {
-      account: accounts[0],
-      chainId,
-      networkName
-    };
-  } catch (error) {
-    console.error("Error connecting to MetaMask:", error);
-    throw error;
-  }
-};
-
-// Process payments using MetaMask, now network-agnostic
-export const processMetaMaskPayment = async (paymentDetails: PaymentRequest): Promise<boolean> => {
-  try {
-    const accounts = await requestAccount();
-    const chainId = await getChainId();
-    const networkName = getNetworkName(chainId);
-    
-    // For destination address, we're using a dummy address for the demo
-    const recipientAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"; // Example address
-    
-    // Convert INR to crypto (this is a simplified conversion)
-    // In a real app, you would use an exchange rate API
-    const cryptoAmount = paymentDetails.amount / 200000; // Example rate
-    
-    // Send the transaction
-    const txHash = await sendTransaction(recipientAddress, cryptoAmount);
-    
-    console.log(`${networkName} transaction successful:`, txHash);
-    
-    // Create a transaction record
-    const transaction: Transaction = {
-      id: uuidv4(),
-      type: "debit",
-      amount: paymentDetails.amount,
-      description: paymentDetails.description,
-      to: paymentDetails.to,
-      date: new Date(),
-      status: "completed",
-      txHash,
-      network: networkName.toLowerCase().split(' ')[0]
+    // Network parameters for different chains
+    const networks: Record<string, any> = {
+      '0x89': {
+        chainId: '0x89',
+        chainName: 'Polygon Mainnet',
+        nativeCurrency: {
+          name: 'MATIC',
+          symbol: 'MATIC',
+          decimals: 18
+        },
+        rpcUrls: ['https://polygon-rpc.com/'],
+        blockExplorerUrls: ['https://polygonscan.com/']
+      },
+      // Add other networks as needed
     };
     
-    // Add transaction to history
-    addTransaction(transaction);
+    if (!networks[chainId]) {
+      throw new Error(`Network parameters not available for chain ID: ${chainId}`);
+    }
     
-    // Return true to indicate success
+    await window.ethereum.request({
+      method: 'wallet_addEthereumChain',
+      params: [networks[chainId]],
+    });
+    
     return true;
   } catch (error) {
-    console.error("MetaMask payment failed:", error);
+    console.error("Failed to add network:", error);
     throw error;
   }
 };
 
-export default {
-  detectEthereum,
-  connectMetamask,
-  sendTransaction,
-  processMetaMaskPayment,
-  getNetworkName,
+export const processMetaMaskPayment = async (paymentRequest: PaymentRequest): Promise<boolean> => {
+  try {
+    // Connect to MetaMask to ensure we have the latest account
+    const { account } = await connectMetamask();
+    
+    // Estimate gas - we're making a basic transfer
+    const gasEstimate = await window.ethereum.request({
+      method: 'eth_estimateGas',
+      params: [{
+        from: account,
+        to: '0xReceipientAddressHere', // In a real app, this would be the recipient's Ethereum address
+        value: '0x' + paymentRequest.amount.toString(16) // Convert amount to hex
+      }]
+    });
+    
+    // Send transaction
+    const transactionHash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        from: account,
+        to: '0xReceipientAddressHere', // In a real app, this would be the recipient's Ethereum address
+        value: '0x' + paymentRequest.amount.toString(16), // Convert amount to hex
+        gas: gasEstimate,
+      }]
+    });
+    
+    console.log(`Transaction sent: ${transactionHash}`);
+    
+    // Create a local transaction record
+    const transaction = {
+      id: uuidv4(),
+      type: "debit",
+      amount: paymentRequest.amount,
+      from: "You",
+      to: paymentRequest.to,
+      date: new Date(),
+      status: "completed",
+      description: paymentRequest.description || "Payment via MetaMask",
+      transactionHash
+    };
+    
+    addTransaction(transaction);
+    
+    // Update user balance
+    updateUserBalance(-paymentRequest.amount);
+    
+    toast.success("Payment successful", {
+      description: `Transaction hash: ${transactionHash.substring(0, 10)}...`
+    });
+    
+    return true;
+  } catch (error) {
+    console.error("Error processing MetaMask payment:", error);
+    
+    toast.error("Payment failed", {
+      description: error.message || "There was an error processing your payment"
+    });
+    
+    return false;
+  }
+};
+
+export const getWalletBalance = async (address: string): Promise<string> => {
+  try {
+    const balance = await window.ethereum.request({
+      method: 'eth_getBalance',
+      params: [address, 'latest']
+    });
+    
+    // Convert balance from wei to ether (1 ether = 10^18 wei)
+    const etherValue = parseInt(balance, 16) / 1e18;
+    
+    return etherValue.toFixed(4);
+  } catch (error) {
+    console.error("Error getting wallet balance:", error);
+    return "0";
+  }
 };

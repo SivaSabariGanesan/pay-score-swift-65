@@ -64,6 +64,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading: true,
   });
 
+  const GOOGLE_CLIENT_ID = '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com';
+
   useEffect(() => {
     // Check for existing session
     const storedUser = localStorage.getItem('user');
@@ -82,72 +84,119 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       setState({ ...state, loading: false });
     }
+  }, []);
 
+  useEffect(() => {
     // Initialize Google Auth
-    if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id: '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com',
-        callback: handleGoogleResponse,
-      });
+    const initGoogleAuth = () => {
+      if (window.google && window.google.accounts) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleGoogleResponse,
+            auto_select: false,
+          });
+          console.log("Google Auth initialized successfully");
+        } catch (error) {
+          console.error("Failed to initialize Google Auth:", error);
+        }
+      }
+    };
+    
+    // Check if Google script is already loaded
+    if (window.google && window.google.accounts) {
+      initGoogleAuth();
     } else {
-      // Load Google script if it's not already loaded
+      // Load Google script if not already loaded
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
       script.defer = true;
-      document.body.appendChild(script);
       script.onload = () => {
-        if (window.google) {
-          window.google.accounts.id.initialize({
-            client_id: '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com',
-            callback: handleGoogleResponse,
-          });
-        }
+        console.log("Google Auth script loaded");
+        initGoogleAuth();
       };
+      script.onerror = (error) => {
+        console.error("Error loading Google Auth script:", error);
+      };
+      document.body.appendChild(script);
     }
+
+    return () => {
+      // Clean up Google Auth if needed
+      if (window.google && window.google.accounts) {
+        try {
+          window.google.accounts.id.cancel();
+        } catch (error) {
+          console.error("Error cancelling Google Auth:", error);
+        }
+      }
+    };
   }, []);
 
   const handleGoogleResponse = (response: any) => {
-    // Decode JWT token from Google
-    const base64Url = response.credential.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
+    try {
+      console.log("Received Google response:", response);
+      // Decode JWT token from Google
+      const base64Url = response.credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
 
-    const { name, email, picture } = JSON.parse(jsonPayload);
-    
-    // Create user profile
-    const user: UserProfile = {
-      ...DEFAULT_USER,
-      name,
-      email,
-      avatar: picture,
-    };
-    
-    // Store user in localStorage
-    localStorage.setItem('user', JSON.stringify(user));
-    
-    // Update state
-    setState({
-      isAuthenticated: true,
-      user,
-      loading: false,
-    });
-    
-    toast.success('Successfully logged in', {
-      description: `Welcome back, ${name}!`,
-    });
+      const { name, email, picture } = JSON.parse(jsonPayload);
+      
+      // Create user profile
+      const user: UserProfile = {
+        ...DEFAULT_USER,
+        name,
+        email,
+        avatar: picture,
+      };
+      
+      // Store user in localStorage
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      // Update state
+      setState({
+        isAuthenticated: true,
+        user,
+        loading: false,
+      });
+      
+      toast.success('Successfully logged in', {
+        description: `Welcome back, ${name}!`,
+      });
+    } catch (error) {
+      console.error("Failed to process Google response:", error);
+      toast.error('Failed to log in with Google');
+    }
   };
 
   const loginWithGoogle = async (): Promise<void> => {
-    if (window.google) {
-      window.google.accounts.id.prompt();
+    if (window.google && window.google.accounts) {
+      try {
+        window.google.accounts.id.prompt((notification: any) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            // Try to display the One Tap UI manually
+            window.google.accounts.id.renderButton(
+              document.getElementById('google-login-button') || document.createElement('div'),
+              { theme: 'outline', size: 'large', shape: 'pill' }
+            );
+          }
+        });
+      } catch (error) {
+        console.error("Failed to prompt Google login:", error);
+        toast.error('Google authentication is not available', {
+          description: 'Please try again later or use another login method'
+        });
+      }
     } else {
       toast.error('Google authentication is not available');
+      console.error('Google API not loaded');
     }
   };
 
