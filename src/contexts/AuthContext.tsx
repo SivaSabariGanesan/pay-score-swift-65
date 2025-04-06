@@ -64,7 +64,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading: true,
   });
 
+  // Update the client ID and configure additional parameters like redirects
   const GOOGLE_CLIENT_ID = '460024795470-v47hfhbbtv5q8lolu015g64o6aiqhhfb.apps.googleusercontent.com';
+  
+  // Define the redirect URI based on the environment
+  const getRedirectUri = () => {
+    // For Android app using Capacitor
+    if (window.location.href.includes('capacitor://')) {
+      return 'capacitor://localhost';
+    }
+    // For deployed web version
+    if (window.location.hostname === 'transpay-five.vercel.app') {
+      return 'https://transpay-five.vercel.app';
+    }
+    // For local development
+    return window.location.origin;
+  };
 
   useEffect(() => {
     // Check for existing session
@@ -95,8 +110,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             client_id: GOOGLE_CLIENT_ID,
             callback: handleGoogleResponse,
             auto_select: false,
+            ux_mode: 'popup',
+            login_uri: getRedirectUri(),
           });
-          console.log("Google Auth initialized successfully");
+          console.log("Google Auth initialized successfully with redirect URI:", getRedirectUri());
         } catch (error) {
           console.error("Failed to initialize Google Auth:", error);
         }
