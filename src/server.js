@@ -1,3 +1,4 @@
+
 // server.js
 import express from "express";
 import Razorpay from "razorpay";
@@ -8,10 +9,12 @@ const app = express();
 app.use(cors({
   origin: [
     "https://TransPay-five.vercel.app",  // ✅ your deployed frontend
-    "capacitor://localhost",               // ✅ for APK
+    "capacitor://localhost",             // ✅ for APK
     "http://localhost",
     "http://localhost:5173",
-    "file://"
+    "file://",
+    "https://localhost",                 // Adding this for Android
+    "https://localhost:5173"             // Adding this for Android
   ],
   methods: ["GET", "POST"],
   credentials: true,
