@@ -24,6 +24,7 @@ const FinancePage = () => {
           amount: 50000, // Credit limit
           description: "Credit Card Application",
           from: "Pay Swift Bank",
+          to: "You",
           date: new Date(),
           status: "pending",
           category: "credit-card",
@@ -47,6 +48,7 @@ const FinancePage = () => {
           type: "debit",
           amount: 10000,
           description: "Mutual Fund Investment",
+          from: "You",
           to: "Growth Plus Fund",
           date: new Date(),
           status: "completed",
@@ -70,6 +72,7 @@ const FinancePage = () => {
           type: "debit",
           amount: 5000,
           description: "Health Insurance Premium",
+          from: "You",
           to: "InsureCo Health",
           date: new Date(),
           status: "completed",

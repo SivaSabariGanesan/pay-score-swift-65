@@ -44,11 +44,13 @@ export interface Transaction {
   description: string;
   transactionId?: string;
   transactionHash?: string;
+  category?: string;
   productDetails?: {
     type: string;
     name: string;
     interestRate?: string;
     term?: string;
+    provider?: string;
   };
 }
 

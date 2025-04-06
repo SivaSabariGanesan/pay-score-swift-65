@@ -1,4 +1,3 @@
-
 import { Transaction, PaymentRequest } from "@/types";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
@@ -168,12 +167,12 @@ const initializeRazorpay = (
         // Create transaction record
         const transaction = {
           id: uuidv4(),
-          type: "debit",
+          type: "debit" as const,
           amount: paymentDetails.amount,
           from: "You",
           to: paymentDetails.to,
           date: new Date(),
-          status: "completed",
+          status: "completed" as const,
           description: paymentDetails.description || "Razorpay Payment",
           transactionId: response.razorpay_payment_id
         };

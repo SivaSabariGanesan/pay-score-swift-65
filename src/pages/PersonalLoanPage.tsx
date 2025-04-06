@@ -21,6 +21,7 @@ const PersonalLoanPage = () => {
       amount: numericAmount,
       description: `Personal Loan at ${interestRate}%`,
       from: "Pay Swift Bank",
+      to: "You",
       date: new Date(),
       status: "completed",
       category: "loan",

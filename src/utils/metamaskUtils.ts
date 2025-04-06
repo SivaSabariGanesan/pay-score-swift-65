@@ -155,12 +155,12 @@ export const processMetaMaskPayment = async (paymentRequest: PaymentRequest): Pr
     // Create a local transaction record
     const transaction = {
       id: uuidv4(),
-      type: "debit",
+      type: "debit" as const,
       amount: paymentRequest.amount,
       from: "You",
       to: paymentRequest.to,
       date: new Date(),
-      status: "completed",
+      status: "completed" as const,
       description: paymentRequest.description || "Payment via MetaMask",
       transactionHash
     };
