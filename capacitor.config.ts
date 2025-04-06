@@ -14,8 +14,9 @@ const config: CapacitorConfig = {
     allowMixedContent: true
   },
   plugins: {
+    // Disabling the HTTP plugin to work around compatibility issues
     CapacitorHttp: {
-      enabled: true
+      enabled: false
     }
   }
 };
